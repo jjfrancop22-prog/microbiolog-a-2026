@@ -1,4 +1,4 @@
-const VERSION='V3.5.4-A2';
+const VERSION='V3.5.4-A3';
 const SCHEMA_VERSION=1;
 const WORKSPACE_ID='lab-psi';
 let CLOUD_SYNC_ENABLED=localStorage.getItem('microbio_cloud_enabled')==='true'; // sesión unificada puede activarla automáticamente tras login válido
@@ -3476,7 +3476,7 @@ const PRODUCTION_RESET_DOMAINS=Object.freeze([
   'microbiologicalControls','microPlateEvents','microActions','monitoringFrequencyDecisions',
   'coliformQCControls','coliformQCActions',
   'sampleIntakes','sampleAnalyses','duplicateEvaluations',
-  'productLots','productUsage','productClosures','productTrace',
+  'productCatalog','productLots','productUsage','productClosures','productTrace',
   'equipmentControls','equipmentCleaning','equipmentTrace',
   'environmentalConditions','environmentTrace',
   'refrigeratorReadings','refrigeratorTrace','refrigerator2Readings','refrigerator2Trace',
@@ -3607,7 +3607,7 @@ async function executeProductionCleanStart(){
         summary:`Inicio limpio completado · cloud ${cloudDeleted} · local ${localDeleted}`,
         cloudDeleted,
         localDeleted,
-        preserved:'Authentication, erpDirectory, permisos, catálogos maestros, configuraciones, criterios y auditLog'
+        preserved:'Authentication, erpDirectory, permisos, configuraciones técnicas, criterios y auditLog'
       }
     });
     if(state.connected&&cloudWriteAllowed())await flushOutbox();
@@ -3636,7 +3636,7 @@ const BOOTSTRAP_OPERATIONAL_DOMAINS=Object.freeze([
   'microbiologicalControls','microPlateEvents','microActions','monitoringFrequencyDecisions',
   'coliformQCControls','coliformQCActions',
   'sampleIntakes','sampleAnalyses','duplicateEvaluations',
-  'productLots','productUsage','productClosures','productTrace',
+  'productCatalog','productLots','productUsage','productClosures','productTrace',
   'equipmentControls','equipmentCleaning','equipmentTrace',
   'environmentalConditions','environmentTrace',
   'refrigeratorReadings','refrigeratorTrace','refrigerator2Readings','refrigerator2Trace',

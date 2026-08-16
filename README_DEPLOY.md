@@ -1,21 +1,21 @@
-# MICROBIOLOGÍA ERP V3.5.4-A2 — Cloud Delete Propagation Fix
+# MICROBIOLOGÍA ERP V3.5.4-A3 — Full Product Catalog Reset
 
-Base: V3.5.4-A1.
+Base: V3.5.4-A2.
 
-Corrección:
-- Los listeners Firestore ahora procesan `removed`.
-- Cuando un documento se elimina en Firebase, se elimina también su copia de IndexedDB.
-- La vista y el Dashboard se actualizan automáticamente.
-- La eliminación se propaga a todas las computadoras/navegadores conectados.
-- Al iniciar sesión, el ERP reconcilia los dominios operativos locales con Firebase aunque la computadora ya tenga datos locales.
-- Registros locales obsoletos que ya no existen en Firebase se eliminan.
-- Si una entidad tiene una operación pendiente en outbox, la reconciliación NO la elimina, protegiendo trabajo offline todavía no sincronizado.
-- Catálogos/configuraciones no se depuran por ausencia cloud; la reconciliación destructiva se limita a dominios operativos.
-- Se mantienen Authentication, permisos, auditoría, Production Clean Start y la arquitectura Multi-PC.
+Corrección solicitada:
+- `productCatalog` ahora forma parte del Inicio Limpio de Producción.
+- La tabla **Productos configurados** queda vacía después del reset.
+- Se elimina `productCatalog` tanto de Firebase como de IndexedDB.
+- Las demás computadoras también eliminan sus copias locales antiguas gracias a la reconciliación cloud.
+- Se mantienen Authentication, usuarios, roles/permisos, configuraciones técnicas, criterios, auditoría y arquitectura Multi-PC.
 
-Prueba:
-1. Abrir JJF y NS en dos navegadores.
-2. Confirmar FIREBASE en ambos.
-3. Si JJF ya ejecutó Production Clean Start, cerrar/reabrir sesión en NS o esperar la reconciliación.
-4. Ambos Dashboard deben quedar 0 / 0 / 0 / 0.
-5. Crear luego un único registro nuevo y verificar que aparezca en ambas computadoras.
+Después de publicar esta versión:
+1. Entrar como Administrador.
+2. Esperar estado `FIREBASE`.
+3. Administración → Inicio limpio de producción.
+4. Ejecutar una sola vez.
+5. Verificar:
+   - Dashboard 0 / 0 / 0 / 0.
+   - Productos configurados: vacío.
+   - Lotes activos: 0.
+   - Otra computadora/navegador debe reconciliarse y quedar también vacío.
