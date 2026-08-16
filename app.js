@@ -1,4 +1,4 @@
-const VERSION='V3.5.4-A1';
+const VERSION='V3.5.4-A2';
 const SCHEMA_VERSION=1;
 const WORKSPACE_ID='lab-psi';
 let CLOUD_SYNC_ENABLED=localStorage.getItem('microbio_cloud_enabled')==='true'; // sesión unificada puede activarla automáticamente tras login válido
@@ -3652,6 +3652,70 @@ function bootstrapStatus(text,mode=''){
   const el=document.getElementById('bootstrapStatus');if(el){el.textContent=text;el.dataset.mode=mode}
 }
 
+
+let cloudDeleteRenderTimer=null;
+function scheduleCloudDeleteRender(){
+  if(cloudDeleteRenderTimer)return;
+  cloudDeleteRenderTimer=setTimeout(async ()=>{
+    cloudDeleteRenderTimer=null;
+    try{await loadLocal()}catch(err){console.warn('Render tras eliminación cloud',err)}
+  },120);
+}
+async function removeRemoteRecordLocal(domain,doc){
+  if(productionCleanStartInProgress)return 0;
+  const data=doc?.data?.()||{};
+  const id=String(data.id||doc?.id||'');
+  if(!id)return 0;
+  const key=`${domain}:${id}`;
+
+  // Si hay una escritura local pendiente para la misma entidad, no borrar:
+  // primero debe resolverse el outbox para evitar perder trabajo offline.
+  const outbox=await idbAll('outbox');
+  const pending=outbox.some(x=>x.domain===domain&&String(x.entityId||'')===id);
+  if(pending){
+    console.warn(`Cloud delete diferido por outbox pendiente: ${key}`);
+    return 0;
+  }
+
+  const rows=await idbAll('records');
+  const exists=rows.some(x=>x.key===key);
+  if(!exists)return 0;
+
+  await idbDelete('records',key);
+  if(Array.isArray(state[domain]))state[domain]=state[domain].filter(x=>String(x.id||'')!==id);
+  scheduleCloudDeleteRender();
+  return 1;
+}
+
+async function reconcileOperationalDomainFromCloud(fsMod,fs,domain,recordMap,pendingKeys){
+  const ref=fsMod.collection(fs,'workspaces',WORKSPACE_ID,CLOUD_COLLECTIONS[domain]);
+  const snap=await withBootstrapTimeout(fsMod.getDocs(ref),domain);
+  const cloudIds=new Set();
+  let received=0,removed=0;
+
+  for(const doc of snap.docs){
+    const data=doc.data();
+    const id=String(data?.id||doc.id||'');
+    if(id)cloudIds.add(id);
+    received+=await writeBootstrapRemoteRecordFast(domain,data,recordMap);
+  }
+
+  // Para dominios operativos, Firebase es la referencia compartida.
+  // Borrar local obsoleto solo si no hay outbox pendiente.
+  if(BOOTSTRAP_OPERATIONAL_DOMAINS.includes(domain)){
+    const localRows=[...recordMap.values()].filter(r=>r.domain===domain&&!r.deleted);
+    for(const row of localRows){
+      const id=String(row.data?.id||'');
+      const key=`${domain}:${id}`;
+      if(!id||cloudIds.has(id)||pendingKeys.has(key))continue;
+      await idbDelete('records',row.key);
+      recordMap.delete(row.key);
+      removed++;
+    }
+  }
+
+  return {domain,cloudCount:snap.size,received,removed};
+}
 let backgroundBootstrapPromise=null;
 
 async function writeBootstrapRemoteRecordFast(domain,data,recordMap){
@@ -3674,68 +3738,57 @@ function withBootstrapTimeout(promise,domain,ms=15000){
 }
 
 async function bootstrapNewPcFromCloudFast(fsMod,fs){
-  const localCount=await localOperationalRecordCount();
-  if(localCount>0){
-    bootstrapStatus(`Bootstrap omitido: esta computadora ya tiene ${localCount} registro(s) operativos locales.`,'SKIPPED');
-    return {bootstrapped:false,reason:'LOCAL_DATA_EXISTS',received:0,errors:[]};
-  }
-
-  bootstrapStatus('Firebase conectado · cargando datos iniciales en segundo plano…','RUNNING');
+  bootstrapStatus('Firebase conectado · reconciliando datos locales con la nube…','RUNNING');
 
   const existingRows=await idbAll('records');
   const recordMap=new Map(existingRows.map(r=>[r.key,r]));
-  let received=0,cloudDocs=0;
+  const outbox=await idbAll('outbox');
+  const pendingKeys=new Set(outbox.map(x=>`${x.domain}:${x.entityId}`));
+
+  let received=0,cloudDocs=0,localRemoved=0;
   const errors=[];
 
   const jobs=DOMAINS.map(async domain=>{
     try{
-      const ref=fsMod.collection(fs,'workspaces',WORKSPACE_ID,CLOUD_COLLECTIONS[domain]);
-      const snap=await withBootstrapTimeout(fsMod.getDocs(ref),domain);
-      let domainReceived=0;
-      cloudDocs+=snap.size;
-      for(const doc of snap.docs){
-        domainReceived+=await writeBootstrapRemoteRecordFast(domain,doc.data(),recordMap);
-      }
-      received+=domainReceived;
-      return {domain,ok:true,count:snap.size,received:domainReceived};
+      const result=await reconcileOperationalDomainFromCloud(fsMod,fs,domain,recordMap,pendingKeys);
+      cloudDocs+=result.cloudCount;
+      received+=result.received;
+      localRemoved+=result.removed;
+      return {...result,ok:true};
     }catch(err){
       const message=String(err?.message||err);
       errors.push({domain,message});
-      console.warn(`Bootstrap ${domain}:`,err);
-      return {domain,ok:false,error:message,count:0,received:0};
+      console.warn(`Reconciliación ${domain}:`,err);
+      return {domain,ok:false,error:message,cloudCount:0,received:0,removed:0};
     }
   });
 
   const results=await Promise.all(jobs);
 
-  if(cloudDocs>0){
-    await loadLocal();
-    renderAll();
-    localStorage.setItem('microbio_bootstrap_completed_at',nowISO());
-    localStorage.setItem('microbio_bootstrap_device',deviceId);
-    await idbPut('syncMeta',{
-      key:`bootstrap:${deviceId}`,
-      deviceId,received,cloudDocs,
-      errors,
-      completedAt:nowISO(),
-      version:VERSION
-    });
-  }
+  // Siempre recargar después de una reconciliación: así un navegador viejo
+  // refleja inmediatamente las eliminaciones hechas desde otra computadora.
+  await loadLocal();
+  renderAll();
+
+  localStorage.setItem('microbio_bootstrap_completed_at',nowISO());
+  localStorage.setItem('microbio_bootstrap_device',deviceId);
+  await idbPut('syncMeta',{
+    key:`bootstrap:${deviceId}`,
+    deviceId,received,cloudDocs,localRemoved,
+    errors,
+    completedAt:nowISO(),
+    version:VERSION
+  });
 
   if(errors.length){
     const names=errors.slice(0,3).map(x=>x.domain).join(', ');
-    bootstrapStatus(`Carga inicial parcial: ${received} registro(s). ${errors.length} dominio(s) con error: ${names}${errors.length>3?'…':''}`,'PARTIAL');
-    if($('#firebaseStatus'))$('#firebaseStatus').textContent=`Firebase conectado · carga inicial parcial (${errors.length} dominio(s) con error).`;
-    return {bootstrapped:cloudDocs>0,reason:'PARTIAL',received,errors,results};
+    bootstrapStatus(`Reconciliación parcial: ${received} recibido(s), ${localRemoved} obsoleto(s) eliminado(s). ${errors.length} dominio(s) con error: ${names}${errors.length>3?'…':''}`,'PARTIAL');
+    if($('#firebaseStatus'))$('#firebaseStatus').textContent=`Firebase conectado · reconciliación parcial (${errors.length} dominio(s) con error).`;
+    return {bootstrapped:true,reason:'PARTIAL',received,localRemoved,errors,results};
   }
 
-  if(cloudDocs===0){
-    bootstrapStatus('Firebase conectado · no hay datos cloud para importar en esta computadora.','EMPTY');
-    return {bootstrapped:false,reason:'CLOUD_EMPTY',received:0,errors:[],results};
-  }
-
-  bootstrapStatus(`Carga inicial completada en segundo plano: ${received} registro(s) recibidos.`,'DONE');
-  return {bootstrapped:true,reason:'OK',received,errors:[],results};
+  bootstrapStatus(`Reconciliación completada: ${received} recibido(s) · ${localRemoved} registro(s) local(es) obsoleto(s) eliminado(s).`,'DONE');
+  return {bootstrapped:true,reason:'OK',received,localRemoved,errors:[],results};
 }
 
 function startBackgroundBootstrap(fsMod,fs){
@@ -3755,9 +3808,16 @@ function startBackgroundBootstrap(fsMod,fs){
 async function startCloudListeners(fsMod,fs){
   for(const domain of DOMAINS){
     const ref=fsMod.collection(fs,'workspaces',WORKSPACE_ID,CLOUD_COLLECTIONS[domain]);
-    const unsub=fsMod.onSnapshot(ref,snap=>snap.docChanges().forEach(ch=>{
-      if(!productionCleanStartInProgress&&ch.type!=='removed')saveRemote(domain,ch.doc.data());
-    }),err=>{
+    const unsub=fsMod.onSnapshot(ref,snap=>{
+      for(const ch of snap.docChanges()){
+        if(productionCleanStartInProgress)continue;
+        if(ch.type==='removed'){
+          removeRemoteRecordLocal(domain,ch.doc).catch(err=>console.warn(`Delete remoto ${domain}`,err));
+        }else{
+          saveRemote(domain,ch.doc.data());
+        }
+      }
+    },err=>{
       if($('#firebaseStatus'))$('#firebaseStatus').textContent='Listener: '+err.message;
     });
     state.listeners.push(unsub);

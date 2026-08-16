@@ -1,21 +1,21 @@
-# MICROBIOLOGÍA ERP V3.5.4-A1 — Sync State Fix
+# MICROBIOLOGÍA ERP V3.5.4-A2 — Cloud Delete Propagation Fix
 
-Corrección puntual sobre V3.5.4-A.
-
-Problema corregido:
-- El login principal y `onAuthStateChanged` podían terminar en distinto orden.
-- Firestore alcanzaba estado `FIREBASE`, pero al finalizar `secureLoginSubmit()` se volvía a ejecutar `markAuthenticatedState()`.
-- Ese último llamado cambiaba nuevamente la cabecera a `SINCRONIZANDO` aunque Firebase ya estuviera conectado.
+Base: V3.5.4-A1.
 
 Corrección:
-- `onAuthStateChanged` queda como único responsable de iniciar/conectar Firestore.
-- `secureLoginSubmit` ya no degrada el estado después de una conexión correcta.
-- `markAuthenticatedState()` es idempotente: si `state.connected === true`, mantiene `FIREBASE`.
-- No se modifica el motor Multi-PC, bootstrap, datos, permisos, auditoría ni Production Clean Start.
+- Los listeners Firestore ahora procesan `removed`.
+- Cuando un documento se elimina en Firebase, se elimina también su copia de IndexedDB.
+- La vista y el Dashboard se actualizan automáticamente.
+- La eliminación se propaga a todas las computadoras/navegadores conectados.
+- Al iniciar sesión, el ERP reconcilia los dominios operativos locales con Firebase aunque la computadora ya tenga datos locales.
+- Registros locales obsoletos que ya no existen en Firebase se eliminan.
+- Si una entidad tiene una operación pendiente en outbox, la reconciliación NO la elimina, protegiendo trabajo offline todavía no sincronizado.
+- Catálogos/configuraciones no se depuran por ausencia cloud; la reconciliación destructiva se limita a dominios operativos.
+- Se mantienen Authentication, permisos, auditoría, Production Clean Start y la arquitectura Multi-PC.
 
 Prueba:
-1. Abrir Netlify.
-2. Iniciar sesión.
-3. Debe pasar brevemente por `SINCRONIZANDO`.
-4. Luego debe quedar en `FIREBASE`.
-5. Entrar en Administración y ejecutar Inicio Limpio de Producción solo cuando la cabecera indique `FIREBASE`.
+1. Abrir JJF y NS en dos navegadores.
+2. Confirmar FIREBASE en ambos.
+3. Si JJF ya ejecutó Production Clean Start, cerrar/reabrir sesión en NS o esperar la reconciliación.
+4. Ambos Dashboard deben quedar 0 / 0 / 0 / 0.
+5. Crear luego un único registro nuevo y verificar que aparezca en ambas computadoras.
