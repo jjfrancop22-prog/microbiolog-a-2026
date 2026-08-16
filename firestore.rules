@@ -1,0 +1,59 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null && request.auth.token.email != null; }
+    function directoryPath() { return /databases/$(database)/documents/erpDirectory/$(request.auth.token.email); }
+    function legacyAccessPath() { return /databases/$(database)/documents/erpAccess/$(request.auth.uid); }
+    function hasDirectoryAccess() { return signedIn() && exists(directoryPath()) && get(directoryPath()).data.active == true && get(directoryPath()).data.workspaceId == 'lab-psi'; }
+    function hasLegacyAccess() { return signedIn() && exists(legacyAccessPath()) && get(legacyAccessPath()).data.active == true && get(legacyAccessPath()).data.workspaceId == 'lab-psi'; }
+    function authorized() { return hasDirectoryAccess() || hasLegacyAccess(); }
+    function role() { return hasDirectoryAccess() ? get(directoryPath()).data.role : get(legacyAccessPath()).data.role; }
+    function isAdmin() { return authorized() && role() == 'ADMIN'; }
+    function permission(module) {
+      return hasDirectoryAccess() && get(directoryPath()).data.permissions[module] != null
+        ? get(directoryPath()).data.permissions[module]
+        : (role() == 'ADMIN' ? 'ADMIN' : (role() == 'OPERADOR' ? 'WRITE' : 'READ'));
+    }
+    function canRead(module) { return authorized() && permission(module) in ['READ','WRITE','ADMIN']; }
+    function canWrite(module) { return authorized() && permission(module) in ['WRITE','ADMIN']; }
+
+    match /erpDirectory/{email} {
+      allow read: if signedIn() && (request.auth.token.email == email || isAdmin());
+      allow create, update, delete: if isAdmin();
+    }
+    match /erpAccess/{uid} { allow read: if signedIn() && request.auth.uid == uid; allow write: if false; }
+
+    match /workspaces/lab-psi/sampleIntakes/{id} { allow read: if canRead('samples'); allow create, update: if canWrite('samples'); allow delete: if isAdmin(); }
+    match /workspaces/lab-psi/sampleAnalyses/{id} { allow read: if canRead('samples'); allow create, update: if canWrite('samples'); allow delete: if isAdmin(); }
+    match /workspaces/lab-psi/duplicateEvaluations/{id} { allow read: if canRead('samples'); allow create, update: if canWrite('samples'); allow delete: if isAdmin(); }
+
+    match /workspaces/lab-psi/productCatalog/{id} { allow read: if canRead('products'); allow create, update: if canWrite('products'); allow delete: if isAdmin(); }
+    match /workspaces/lab-psi/productLots/{id} { allow read: if canRead('products'); allow create, update: if canWrite('products'); allow delete: if isAdmin(); }
+    match /workspaces/lab-psi/productUsage/{id} { allow read: if canRead('products'); allow create, update: if canWrite('products'); allow delete: if isAdmin(); }
+    match /workspaces/lab-psi/productClosures/{id} { allow read: if canRead('products'); allow create, update: if canWrite('products'); allow delete: if isAdmin(); }
+    match /workspaces/lab-psi/productTrace/{id} { allow read: if canRead('products'); allow create, update: if canWrite('products'); allow delete: if isAdmin(); }
+
+
+    // Auditoría: cualquier usuario autorizado puede leerla.
+    // Solo se pueden CREAR eventos; no se permite modificar ni eliminar eventos existentes.
+    match /workspaces/lab-psi/auditLog/{id} {
+      allow read: if authorized();
+      allow create: if authorized();
+      allow update, delete: if false;
+    }
+
+    match /workspaces/lab-psi/{col}/{id} {
+      allow read: if authorized();
+      allow create, update: if authorized() && (
+        (col in ['mediaPrep','mediaQC','mediaRelease','catalogMedia','catalogPersonnel','catalogBottles','performanceTasks','performanceTests','performanceLinks'] && canWrite('media')) ||
+        (col in ['strainPreparations','strainReactivations','strainCryovialEvents','catalogStrains'] && canWrite('strains')) ||
+        (col in ['coliformQCControls','coliformQCActions'] && canWrite('coliforms')) ||
+        (col in ['catalogMonitoringPoints','microbiologicalControls','microPlateEvents','microActions','monitoringFrequencyDecisions'] && canWrite('micro')) ||
+        (col in ['equipmentCatalog','equipmentControls','equipmentCleaning','equipmentTrace','environmentalConditions','environmentHolidays','environmentTrace','environmentConfig','refrigeratorConfig','refrigeratorReadings','refrigeratorTrace','refrigerator2Config','refrigerator2Readings','refrigerator2Trace','incubatorConfig','incubatorReadings','incubatorVerifications','incubatorTrace','waterBathConfig','waterBathReadings','waterBathVerifications','waterBathTrace','phMeterConfig','phMeterReadings','phMeterAccuracy','phMeterTrace'] && canWrite('equipment')) ||
+        (col in ['systemConfig','criteriaRules','criteriaVersions','catalogMicroorganisms'] && canWrite('settings'))
+      );
+      allow delete: if isAdmin();
+    }
+    match /{document=**} { allow read, write: if false; }
+  }
+}

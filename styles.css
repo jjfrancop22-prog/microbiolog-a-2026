@@ -1,0 +1,295 @@
+:root{--bg:#f4f6f8;--panel:#fff;--line:#dce2e8;--text:#17202a;--muted:#66727f;--primary:#176b5b;--primary2:#0f5145;--ok:#157347;--warn:#9a6700;--bad:#b42318}
+*{box-sizing:border-box}body{margin:0;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--text)}
+.topbar{height:72px;background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 24px;position:sticky;top:0;z-index:5}.topbar h1{font-size:21px;margin:0}.version{font-size:12px;color:var(--muted);margin-top:3px}.badge{font-size:12px;font-weight:800;padding:7px 11px;border-radius:999px}.badge.offline{background:#eceff2;color:#59636e}.badge.online{background:#dff6e9;color:#146c43}.badge.syncing{background:#fff2cc;color:#7a5700}
+.layout{display:grid;grid-template-columns:230px 1fr;min-height:calc(100vh - 72px)}.sidebar{background:#fff;border-right:1px solid var(--line);padding:18px 12px}.nav{width:100%;border:0;background:transparent;text-align:left;padding:11px 12px;border-radius:8px;font-size:14px;cursor:pointer;margin-bottom:4px}.nav:hover,.nav.active{background:#e9f3f0;color:var(--primary2);font-weight:700}.soon{float:right;font-size:10px;color:#8a949e}.content{padding:24px;max-width:1500px;width:100%}.view,.tabpane{display:none}.view.active,.tabpane.active{display:block}.section-head{display:flex;justify-content:space-between;align-items:end;margin-bottom:16px}.section-head h2{margin:0 0 4px}.section-head p{margin:0;color:var(--muted)}
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(150px,1fr));gap:14px;margin-bottom:16px}.kpi{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:17px}.kpi span{color:var(--muted);font-size:13px}.kpi strong{font-size:28px;display:block;margin-top:6px}.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px;margin-bottom:16px;box-shadow:0 1px 2px rgba(0,0,0,.02)}.panel h3{margin-top:0}.tabs{display:flex;gap:7px;margin-bottom:14px;flex-wrap:wrap}.tab{border:1px solid var(--line);background:#fff;padding:9px 13px;border-radius:8px;cursor:pointer}.tab.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+.form-grid{display:grid;grid-template-columns:repeat(3,minmax(160px,1fr));gap:13px}.form-grid label{font-size:12px;font-weight:700;color:#46515c;display:flex;flex-direction:column;gap:5px}.wide{grid-column:1/-1}input,select,textarea{width:100%;border:1px solid #cfd6dd;border-radius:7px;padding:9px 10px;font:inherit;background:#fff}textarea{resize:vertical}.actions{display:flex!important;flex-direction:row!important;gap:9px;align-items:center}button{font:inherit}.primary{border:0;background:var(--primary);color:#fff;padding:10px 15px;border-radius:8px;font-weight:700;cursor:pointer}.primary:hover{background:var(--primary2)}.actions button:not(.primary){border:1px solid var(--line);background:#fff;padding:9px 13px;border-radius:8px;cursor:pointer}.hint{font-size:12px;color:var(--muted)}
+.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;font-size:12px;min-width:800px}th{background:#f7f9fa;text-align:left;color:#4b5661;font-weight:800;border-bottom:1px solid var(--line);padding:9px}td{border-bottom:1px solid #edf0f2;padding:9px;vertical-align:top}.pill{display:inline-block;border-radius:999px;padding:3px 7px;font-weight:800;font-size:10px}.pill.ok{background:#dff6e9;color:var(--ok)}.pill.warn{background:#fff2cc;color:var(--warn)}.pill.bad{background:#fde7e5;color:var(--bad)}.statusbox{background:#f7f9fa;border:1px solid var(--line);border-radius:8px;padding:12px;margin-top:12px;font-size:13px}.toast{position:fixed;right:22px;bottom:22px;background:#1f2933;color:#fff;padding:11px 14px;border-radius:9px;opacity:0;transform:translateY(10px);pointer-events:none;transition:.2s;z-index:20}.toast.show{opacity:1;transform:translateY(0)}code{font-size:11px}
+@media(max-width:900px){.layout{grid-template-columns:1fr}.sidebar{display:flex;overflow:auto;border-right:0;border-bottom:1px solid var(--line);padding:8px;position:sticky;top:72px;z-index:4}.nav{width:auto;white-space:nowrap;margin:0 4px}.content{padding:14px}.kpis{grid-template-columns:repeat(2,1fr)}.form-grid{grid-template-columns:1fr}.wide{grid-column:auto}.soon{display:none}}
+.inline-form{display:grid;grid-template-columns:minmax(140px,220px) minmax(220px,1fr) auto;gap:9px;margin-bottom:14px;align-items:end}.compact-form{margin-bottom:16px}.mini{border:1px solid var(--line);background:#fff;border-radius:6px;padding:5px 8px;cursor:pointer;font-size:11px}.mini:hover{background:#f2f5f6}.small-table{min-width:520px}.form-grid input[readonly]{background:#f5f7f8;color:#5d6872}.catalog-note{font-size:12px;color:var(--muted)}
+@media(max-width:900px){.inline-form{grid-template-columns:1fr}}
+
+/* V0.1.4 · Bandeja QC */
+.panel-heading-row{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap}.panel-heading-row h3{margin-bottom:4px}.pending-counter{display:inline-flex;align-items:center;justify-content:center;min-width:110px;padding:8px 12px;border-radius:999px;background:#fff3cd;color:#7a5700;font-weight:800;border:1px solid #f2d675}.primary-mini{background:#19765f!important;color:#fff!important;border-color:#19765f!important}.empty-success{text-align:center;color:#19765f;font-weight:700;padding:18px!important}.pending-qc-panel tbody tr:hover{background:#f6faf9}
+
+.rule-grid{display:grid;grid-template-columns:repeat(3,minmax(220px,1fr));gap:12px}.rule-grid>div{border:1px solid #d9e2e8;border-radius:12px;padding:12px;background:#fbfcfd}.rule-grid b{display:block;margin-bottom:4px;color:#153b34}.rule-grid span{font-size:.9rem;color:#5b6873;line-height:1.35}@media(max-width:900px){.rule-grid{grid-template-columns:1fr}}
+.closure-panel{border-left:4px solid #176b5b}.panel-heading{display:flex;justify-content:space-between;gap:16px;align-items:flex-start}.closure-help{background:#f5f8f7;border:1px solid #dce8e4;border-radius:10px;padding:12px 14px;color:#41545e}.closure-panel textarea{min-height:86px}
+
+/* V1.0.0-A consolidada */
+.top-actions{display:flex;align-items:center;gap:12px}.session-user{font-size:12px;font-weight:700;color:#46515c;display:flex;align-items:center;gap:8px}.session-user select{width:auto;min-width:110px;padding:7px 9px}.principle{border-left:4px solid var(--primary)}.performance-block{border:1px solid #dbe5e2;background:#f8fbfa;border-radius:10px;padding:14px}.performance-block.not-required{background:#f6f7f8}.performance-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px}.performance-head div{display:flex;flex-direction:column;gap:4px}.performance-head span{font-size:12px;color:var(--muted)}.performance-grid{display:grid;grid-template-columns:repeat(3,minmax(160px,1fr));gap:12px}.auto-result,.auto-fields{background:#f7f9fa;border:1px solid var(--line);border-radius:8px;padding:11px;font-size:13px}.text-ok{color:var(--ok)}.text-bad{color:var(--bad)}.text-warn{color:var(--warn)}
+.modal{display:none;position:fixed;inset:0;background:rgba(12,20,28,.5);z-index:50;padding:32px;overflow:auto}.modal.open{display:block}.modal-card{position:relative;max-width:920px;margin:0 auto;background:#fff;border-radius:14px;padding:22px;box-shadow:0 18px 50px rgba(0,0,0,.2)}.modal-close{position:absolute;right:14px;top:12px;border:0;background:#eef1f3;border-radius:999px;width:34px;height:34px;font-size:22px;cursor:pointer}.trace-card{display:grid;grid-template-columns:repeat(4,minmax(140px,1fr));gap:10px;margin:16px 0}.trace-card>div{border:1px solid var(--line);border-radius:10px;padding:11px}.trace-card span{display:block;color:var(--muted);font-size:11px;margin-bottom:5px}.timeline{border-left:2px solid #dce6e3;margin-left:8px;padding-left:18px}.timeline-item{position:relative;padding:0 0 18px}.timeline-item:before{content:'';position:absolute;left:-24px;top:3px;width:10px;height:10px;background:var(--primary);border-radius:50%}.timeline-item b,.timeline-item span,.timeline-item small{display:block}.timeline-item span{font-size:11px;color:var(--muted);margin:3px 0}.timeline-item small{font-size:12px;color:#43505b}
+@media(max-width:900px){.top-actions{gap:6px}.session-user{display:none}.performance-grid,.trace-card{grid-template-columns:1fr}}
+
+.mini.danger{border-color:#efb3b3;color:#a62b2b;background:#fff7f7}.mini.danger:hover{background:#fdeaea}
+
+.field-help{display:block;margin-top:6px;color:#667085;font-size:.82rem;line-height:1.3}.primary:disabled{opacity:.5;cursor:not-allowed}
+.strain-tabpane{display:none}.strain-tabpane.active{display:block}.strain-tab{border:1px solid var(--line);background:#fff;padding:9px 13px;border-radius:8px;cursor:pointer}.strain-tab.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+
+/* V1.1.3 · Reactivación inteligente */
+.sci-picker{display:grid;grid-template-columns:minmax(84px,1fr) auto minmax(76px,.8fr) auto;gap:7px;align-items:center}.sci-picker span{font-weight:700;color:#46515c;white-space:nowrap}.sci-picker select{min-width:0}.result-pending{background:#fff8df!important;color:#8a6100!important;font-weight:800}.result-ok{background:#e5f6ec!important;color:#12663f!important;font-weight:800}.result-bad{background:#fdebea!important;color:#a3241b!important;font-weight:800}@media(max-width:900px){.sci-picker{grid-template-columns:1fr auto 1fr}.sci-picker span:last-child{grid-column:1/-1}}
+
+.performance-not-applicable{opacity:.55}.performance-not-applicable select{background:#f2f4f6}.performance-head span{display:block;margin-top:4px}
+
+/* V1.1.6 · Consolidación de reglas y UX */
+.requirement-card,.release-auto-summary{border:1px solid #d8e6e2;background:#f7fbfa;border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:4px}.requirement-card b,.release-auto-summary b{color:#153b34}.requirement-card span,.release-auto-summary span{font-size:12px;color:var(--muted)}
+.auto-hidden{display:none!important}.state-card{border-radius:12px;padding:15px 16px;display:flex;flex-direction:column;gap:5px;border:1px solid var(--line)}.state-card strong{font-size:18px}.state-card span{font-size:12px}.state-pending{background:#fff8df;border-color:#efd889;color:#805d00}.state-ok{background:#e9f7ef;border-color:#b9dfc8;color:#12663f}.state-bad{background:#fdeadf;border-color:#efbbb6;color:#a3241b}.cycle-summary{display:block;margin-top:5px;color:var(--muted);font-weight:400;line-height:1.3}.days-warning{font-weight:800;color:var(--warn)}
+
+
+/* V1.1.7 Performance Bridge */
+.performance-task-picker{display:block;margin-bottom:16px}.performance-task-picker select{margin-top:6px}.performance-task-summary{display:grid;grid-template-columns:repeat(5,minmax(130px,1fr));gap:10px;margin:12px 0 18px}.performance-task-summary>div{border:1px solid var(--border);border-radius:12px;padding:12px;background:#f8fafb}.performance-task-summary span{display:block;font-size:.78rem;color:var(--muted);margin-bottom:4px}.performance-test-list{display:grid;gap:14px}.performance-test-card{border:1px solid var(--border);border-radius:14px;padding:16px;background:#fff}.performance-test-title{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:12px}.performance-test-title span{display:block;color:var(--muted);font-size:.85rem;margin-top:3px}.linked-data{display:grid;grid-template-columns:repeat(4,minmax(110px,1fr));gap:8px;background:#f7faf9;border-radius:10px;padding:10px;margin:10px 0}.linked-data span{font-size:.82rem}.linked-data.muted{display:block;color:var(--muted)}.performance-observations{display:grid;grid-template-columns:1fr 1fr;gap:12px}.performance-test-card label{display:block;margin:8px 0}.performance-test-card select{width:100%;margin-top:5px}.performance-save-test{margin-top:10px}.performance-react-btn{margin:4px 0 8px}.performance-profile-admin{padding:10px 12px;background:#f6faf8;border:1px solid var(--border);border-radius:10px}.performance-profile-admin small{display:block;color:var(--muted);margin-top:4px}.performance-readonly-grid select{background:#f3f5f6}.field-help{display:block;color:var(--muted);margin-top:6px}@media(max-width:900px){.performance-task-summary{grid-template-columns:1fr 1fr}.linked-data{grid-template-columns:1fr 1fr}.performance-observations{grid-template-columns:1fr}}
+
+/* V2.0.0-A · Control microbiológico / Catálogo Maestro */
+.micro-tabs{margin-bottom:18px}.micro-tab:disabled{opacity:.58;cursor:not-allowed;background:#f3f6f8}.micro-kpis{margin-bottom:18px}.monitoring-table{min-width:1450px}.mc-type{display:inline-flex;padding:5px 9px;border-radius:999px;font-weight:800;font-size:.8rem}.mc-ambient{background:#e0f2fe;color:#075985}.mc-surface{background:#ede9fe;color:#5b21b6}.mc-water{background:#dbeafe;color:#1d4ed8}.row-muted{opacity:.58}.danger-outline{color:#b42318;border-color:#f5b5b0}.monitoring-table td{vertical-align:top}
+
+
+/* V2.0.0-C · Planificador Automático limpio sobre V2.0.0-B */
+.micro-pane{display:none}.micro-pane.active{display:block}.micro-tab{border:1px solid var(--line);background:#fff;padding:9px 13px;border-radius:8px;cursor:pointer}.micro-tab.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+.planner-kpis{grid-template-columns:repeat(5,minmax(120px,1fr));margin-bottom:18px}.planner-toolbar{display:grid;grid-template-columns:2fr repeat(3,1fr);gap:10px;margin-bottom:16px}.planner-grid{display:grid;grid-template-columns:repeat(2,minmax(300px,1fr));gap:14px}.planner-card{border:1px solid var(--line);border-left:5px solid #94a3b8;border-radius:12px;padding:14px;background:#fff}.planner-card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}.planner-card-head small{color:var(--muted)}.planner-card h4{margin:3px 0 0;font-size:16px}.planner-state{font-size:11px;font-weight:900;padding:5px 8px;border-radius:999px;background:#eef2f5}.planner-meta{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}.planner-meta span{font-size:11px;background:#f3f6f8;border-radius:999px;padding:4px 7px}.planner-dates{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}.planner-dates>div{background:#f7f9fa;border:1px solid var(--line);border-radius:8px;padding:8px}.planner-dates small,.planner-dates b{display:block}.planner-card p{font-size:12px;color:var(--muted);min-height:18px}.planner-actions{display:flex;gap:8px;flex-wrap:wrap}.planner-overdue{border-left-color:#b42318}.planner-overdue .planner-state{background:#fde7e5;color:#b42318}.planner-today{border-left-color:#c56a00}.planner-today .planner-state{background:#fff0d9;color:#8a4b00}.planner-upcoming{border-left-color:#b7791f}.planner-upcoming .planner-state{background:#fff7df;color:#805d00}.planner-ontime{border-left-color:#19765f}.planner-ontime .planner-state{background:#e5f6ec;color:#12663f}.planner-first{border-left-color:#2563eb}.planner-first .planner-state{background:#e8f0ff;color:#1d4ed8}.planner-config{border-left-color:#64748b;background:#fafafa}.planner-config .planner-state{background:#edf0f2;color:#475569}.planner-week{display:grid;grid-template-columns:repeat(7,minmax(120px,1fr));gap:8px}.planner-day{border:1px solid var(--line);border-radius:9px;padding:9px;min-height:92px;background:#fbfcfd}.planner-day>b,.planner-day span,.planner-day small{display:block}.planner-day>b{margin-bottom:7px;text-transform:capitalize}.planner-day span{font-size:11px;padding:5px 0;border-top:1px solid #edf0f2}.planner-day small{font-size:11px;color:var(--muted)}
+@media(max-width:1100px){.planner-kpis{grid-template-columns:repeat(2,1fr)}.planner-toolbar{grid-template-columns:1fr 1fr}.planner-grid{grid-template-columns:1fr}.planner-week{grid-template-columns:repeat(2,1fr)}}@media(max-width:650px){.planner-toolbar,.planner-week{grid-template-columns:1fr}}
+
+
+/* V2.0.0-D · Nuevo Control Inteligente */
+.smart-input-block{border:1px solid #dbe4ee;border-radius:12px;padding:14px;background:#f8fafc}
+.smart-observation-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;align-items:end}
+.smart-calculation{display:flex;flex-direction:column;gap:4px;padding:12px;border-radius:10px;background:white;border:1px solid #dbe4ee;min-height:72px}
+.smart-calculation span,.smart-calculation small{color:#64748b}.smart-calculation b{font-size:1.25rem;color:#0f172a}
+.plate-assignment-note{padding:12px 14px;border-radius:10px;background:#fff7ed;border:1px solid #fed7aa;color:#9a3412}
+#microControlForm input[readonly]{background:#f1f5f9;color:#334155}
+
+/* V2.0.0-E · Resultados Paso 4 */
+.micro-results-kpis{grid-template-columns:repeat(5,minmax(0,1fr));margin-bottom:14px}.micro-results-toolbar{grid-template-columns:2fr repeat(4,minmax(130px,1fr))}.micro-results-actions{display:flex;justify-content:flex-end;gap:8px;margin:12px 0}.micro-results-table small.cycle-summary{display:block;margin-top:4px;color:#75808b}.micro-results-table td{white-space:nowrap}.micro-results-table td:nth-child(3),.micro-results-table td:nth-child(6){white-space:normal;min-width:170px}@media(max-width:1000px){.micro-results-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.micro-results-toolbar{grid-template-columns:1fr 1fr}}
+
+/* V2.0.0-F · feedback de generación de cajas desde Preparación */
+.plate-prep-feedback{display:flex;flex-direction:column;gap:4px;border:1px solid #cfe2dc;background:#f5fbf8;border-radius:10px;padding:12px 14px}.plate-prep-feedback b{color:#145c4d}.plate-prep-feedback span{font-size:12px;color:#5c6973}.plate-prep-feedback.active{border-color:#9ccfbe;background:#eef9f5}.plate-prep-feedback.non-agar{background:#f7f8f9;border-color:#dce2e6}.plate-prep-feedback .plate-count{font-size:18px;font-weight:800;color:#145c4d}.plate-assignment-note{border:1px solid #d8e4df;background:#f8fbfa;border-radius:9px;padding:11px 12px;font-size:12px;color:#46515c}
+
+.plate-expiry-alert{margin:0 0 14px;padding:13px 15px;border:1px solid #f2b8b5;background:#fff1f0;color:#8f1d17;border-radius:10px;font-weight:700}.plate-expiry-alert button{margin-left:10px}.micro-results-kpis{grid-template-columns:repeat(5,minmax(0,1fr))}
+
+.historical-banner{position:sticky;top:0;z-index:15;background:#fff3cd;border-bottom:1px solid #e7c96a;color:#6b5200;padding:10px 22px;font-size:13px;text-align:center}.historical-banner[hidden]{display:none}.historical-toggle{display:flex!important;gap:10px;align-items:flex-start;background:#fff9df;border:1px solid #ead58a;border-radius:9px;padding:12px!important}.historical-toggle input{width:18px;height:18px;margin-top:2px}.historical-toggle span{display:flex;flex-direction:column;gap:4px}.historical-toggle small{color:#655d43;line-height:1.35}
+
+/* V2.0.0-I Smart Planificador */
+.planner-start-btn{border:1px solid #19765f;background:#19765f;color:#fff;border-radius:7px;padding:7px 11px;cursor:pointer;font-size:12px;font-weight:800;min-width:122px}.planner-start-btn:hover:not(:disabled){background:#145f4d}.planner-start-btn:disabled{background:#eef2f4;color:#7b8790;border-color:#d7dee3;cursor:not-allowed}.planner-processing{border-left-color:#2563eb;background:#f8fbff}.planner-processing .planner-state{background:#e8f0ff;color:#1d4ed8}.planner-processing .planner-start-btn{background:#e8f0ff;color:#1d4ed8;border-color:#b9cffd}
+
+
+/* V2.0.0-I1 · Reposición inteligente de cajas */
+.no-stock-action{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 16px;border:1px solid #f0c36a;border-radius:12px;background:#fff8e7;margin-top:-4px}
+.no-stock-action[hidden]{display:none!important}.no-stock-action div{display:flex;flex-direction:column;gap:3px}.no-stock-action span{color:var(--muted,#667085);font-size:.9rem}
+.prepare-stock-btn{background:#0f766e!important;color:#fff!important;border-color:#0f766e!important;font-weight:700}.prepare-stock-btn:hover{filter:brightness(.95)}
+
+/* V2.2.0 · Motor Inteligente de Frecuencia */
+.frequency-kpis{grid-template-columns:repeat(4,minmax(150px,1fr));margin-bottom:18px}.frequency-table{min-width:1450px}.frequency-table td{vertical-align:top}.freq-reason{min-width:320px;white-space:normal}.freq-actions{display:flex;gap:7px;flex-wrap:wrap;min-width:190px}.frequency-rules{border-left:4px solid #2563eb}.frequency-table .pill.ok{background:#e5f6ec;color:#12663f}.frequency-table .pill.warn{background:#fff2cc;color:#8a6100}.frequency-table .pill.bad{background:#fde7e5;color:#a3241b}@media(max-width:900px){.frequency-kpis{grid-template-columns:repeat(2,1fr)}}
+
+
+/* V2.3.0-A · Control de Calidad Q1/Q2/Q3 */
+.qc-kpis{grid-template-columns:repeat(4,minmax(150px,1fr));margin-bottom:18px}.qc-rule-banner{border-left:4px solid #0f766e}.qc-planner-grid{display:grid;grid-template-columns:repeat(3,minmax(260px,1fr));gap:14px}.qc-plan-card{border:1px solid var(--line);border-top:5px solid #19765f;border-radius:13px;padding:15px;background:#fff}.qc-plan-card.overdue{border-top-color:#b42318;background:#fffafa}.qc-plan-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.qc-plan-head h3{font-size:15px;margin:3px 0 0}.qc-code{font-weight:900;color:#0f766e}.qc-plan-date{display:flex;flex-direction:column;margin:14px 0;padding:11px;border-radius:10px;background:#f7f9fa}.qc-plan-date span,.qc-plan-date small{color:var(--muted);font-size:12px}.qc-plan-date b{font-size:20px}.qc-plan-meta{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:11px}.qc-plan-meta>span:not(.pill){font-size:12px;background:#f3f6f8;border-radius:999px;padding:5px 8px}.qc-deps{display:grid;gap:8px}.qc-dep{display:flex;flex-direction:column;border-radius:9px;padding:9px 10px;border:1px solid}.qc-dep b{font-size:12px}.qc-dep span{font-size:11px;margin-top:3px}.qc-dep.ok{border-color:#b8dccf;background:#f2faf7;color:#135f4c}.qc-dep.bad{border-color:#f0c2be;background:#fff4f3;color:#9f241c}.qc-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.qc-actions button:disabled{opacity:.45;cursor:not-allowed}.qc-execution{border:2px solid #9ccfbe}.qc-criteria{padding:12px;border-radius:10px;background:#f4f8f7;border:1px solid #d6e5df;font-size:13px}.qc-result-ok{color:#12663f}.qc-result-bad{color:#b42318}.qc-result-pending{color:#805d00}.qc-history-table{min-width:1500px}.qc-history-table td{white-space:nowrap}@media(max-width:1100px){.qc-planner-grid{grid-template-columns:1fr 1fr}}@media(max-width:700px){.qc-kpis,.qc-planner-grid{grid-template-columns:1fr}}
+.qc-q2-fields{display:grid;grid-template-columns:repeat(3,minmax(180px,1fr));gap:12px;padding:12px;border:1px solid var(--line);border-radius:10px;background:#fbfcfd}.qc-q2-fields[hidden]{display:none!important}.qc-q2-fields label{margin:0}@media(max-width:800px){.qc-q2-fields{grid-template-columns:1fr}}
+
+/* V2.3.0-A1 · Primera carga histórica QC */
+.qc-first-load-panel{border-left:4px solid var(--green,#177d68)}
+.qc-history-entry-tools{display:grid;grid-template-columns:minmax(220px,320px) 1fr;gap:14px;align-items:end;padding:12px;border:1px solid #d9e4e8;border-radius:12px;background:#f7fafb}
+.qc-history-entry-tools label{margin:0}
+.qc-history-entry-note{display:flex;flex-direction:column;gap:4px;padding:10px 12px;border-radius:10px;background:#eef7f4;color:#27443d}
+.qc-history-entry-note span{font-size:.9rem;color:#5d6d73}
+@media(max-width:760px){.qc-history-entry-tools{grid-template-columns:1fr}}
+/* V2.3.0-A5.3 · Resultados independientes A-1 / LMX */
+.qc-q2-header{display:grid;grid-template-columns:1fr 1fr;gap:12px}.qc-medium-result-card{border:1px solid #cfe0da;border-radius:14px;padding:15px;background:#fff}.qc-a1-card{border-left:5px solid #15735f}.qc-lmx-card{border-left:5px solid #315f8b}.qc-medium-result-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:13px;padding-bottom:11px;border-bottom:1px solid #e7ecef}.qc-medium-result-head div{display:flex;flex-direction:column;gap:3px}.qc-medium-result-head b{font-size:15px;color:#17212b}.qc-medium-result-head span{font-size:11px;color:#65727e}.qc-medium-result-head strong{font-size:18px;letter-spacing:.08em;background:#f3f6f8;border-radius:999px;padding:7px 11px;white-space:nowrap}.qc-medium-result-grid{display:grid;grid-template-columns:repeat(4,minmax(150px,1fr));gap:12px}.qc-observation-grid{display:grid;grid-template-columns:repeat(3,minmax(170px,1fr));gap:12px}.qc-observation-grid[hidden]{display:none!important}@media(max-width:1000px){.qc-medium-result-grid{grid-template-columns:repeat(2,1fr)}}@media(max-width:700px){.qc-q2-header,.qc-medium-result-grid,.qc-observation-grid{grid-template-columns:1fr}.qc-medium-result-head{flex-direction:column}}
+
+
+/* V2.4.0-A · Muestras y duplicados */
+.sample-kpis{grid-template-columns:repeat(4,minmax(150px,1fr));margin-bottom:16px}.sample-flow-banner{border-left:5px solid #0f766e;display:flex;flex-direction:column;gap:5px;background:#f3faf7}.sample-flow-banner span{color:#53616c;line-height:1.45}.sample-intake-grid{display:grid;grid-template-columns:repeat(4,minmax(170px,1fr));gap:12px}.sample-intake-grid .span-2{grid-column:span 2}.sample-table{min-width:1050px}.sample-analysis-panel{border:2px solid #9ccfbe;background:#fbfffd}.sample-analysis-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:14px}.sample-analysis-head h3{margin:0 0 3px}.sample-analysis-head span{color:var(--muted);font-size:12px}.sample-condition-grid{display:grid;grid-template-columns:repeat(4,minmax(150px,1fr));gap:12px}.sample-result-card{margin:16px 0;border:1px solid #cfe0da;border-left:5px solid #15735f;border-radius:14px;padding:15px;background:white}.sample-result-head{display:flex;justify-content:space-between;gap:14px;align-items:center;padding-bottom:12px;border-bottom:1px solid #e4ebe8}.sample-result-head>div:first-child{display:flex;flex-direction:column;gap:3px}.sample-result-head span{font-size:12px;color:var(--muted)}.sample-mpn-badge{padding:9px 12px;border-radius:10px;background:#eef7f4;font-size:12px;color:#456}.sample-mpn-badge strong{display:block;font-size:21px;color:#0f5d4d}.sample-tubes-grid{display:grid;grid-template-columns:repeat(5,minmax(130px,1fr));gap:12px;align-items:end;margin-top:13px}.sample-final-result{border:1px solid #d6e5df;background:#f4f8f7;border-radius:10px;padding:10px 12px;min-height:68px;display:flex;flex-direction:column}.sample-final-result span,.sample-final-result small{font-size:11px;color:var(--muted)}.sample-final-result strong{font-size:20px;color:#135f4c}.pill.bad{background:#fde7e5;color:#a3241b}@media(max-width:1100px){.sample-intake-grid,.sample-condition-grid{grid-template-columns:repeat(2,1fr)}.sample-tubes-grid{grid-template-columns:repeat(2,1fr)}}@media(max-width:680px){.sample-kpis,.sample-intake-grid,.sample-condition-grid,.sample-tubes-grid{grid-template-columns:1fr}.sample-intake-grid .span-2{grid-column:span 1}.sample-analysis-head,.sample-result-head{flex-direction:column}}
+
+/* V2.4.0-F · Consolidado mensual + KPI de muestras */
+.sample-consolidated-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}.sample-consolidated-head h3{margin-bottom:5px}.sample-filter-grid{display:grid;grid-template-columns:repeat(4,minmax(150px,1fr)) auto;gap:12px;align-items:end;margin:16px 0;padding:14px;border:1px solid #dce6e2;border-radius:12px;background:#f8fbfa}.sample-filter-actions{display:flex;gap:8px;align-items:center}.sample-dashboard-kpis{display:grid;grid-template-columns:repeat(5,minmax(145px,1fr));gap:12px;margin:14px 0}.sample-dashboard-kpis .kpi{min-height:92px}.sample-dashboard-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:14px 0}.sample-dashboard-card{border:1px solid #dce6e2;border-radius:12px;padding:14px;background:#fff}.sample-dashboard-card>b{display:block;margin-bottom:12px}.sample-bar-row{display:grid;grid-template-columns:120px 1fr 52px;gap:9px;align-items:center;margin:9px 0;font-size:12px}.sample-bar-track{height:11px;background:#edf2f1;border-radius:999px;overflow:hidden}.sample-bar-fill{height:100%;background:#177d68;border-radius:999px}.sample-bar-fill.warn{background:#c48b13}.sample-bar-fill.bad{background:#b42318}.sample-consolidated-table{min-width:1850px}.sample-consolidated-table td{vertical-align:top;white-space:nowrap}.sample-consolidated-table td:nth-child(6){white-space:normal;min-width:190px}@media(max-width:1100px){.sample-filter-grid{grid-template-columns:repeat(2,1fr)}.sample-dashboard-kpis{grid-template-columns:repeat(2,1fr)}}@media(max-width:720px){.sample-consolidated-head{flex-direction:column}.sample-filter-grid,.sample-dashboard-kpis,.sample-dashboard-grid{grid-template-columns:1fr}.sample-filter-actions{flex-wrap:wrap}}
+
+
+/* V2.4.0-G · Dashboard gerencial compacto */
+.sample-consolidated-panel{overflow:hidden}
+.sample-consolidated-head{padding-bottom:4px;border-bottom:1px solid #edf2f1}
+.sample-filter-grid{grid-template-columns:repeat(4,minmax(130px,1fr)) auto!important;gap:10px!important;padding:12px!important;margin:14px 0 16px!important}
+.sample-filter-grid label{margin:0;min-width:0}
+.sample-filter-grid select{width:100%}
+.sample-filter-actions{white-space:nowrap}
+.sample-filter-actions button{min-height:40px}
+.sample-kpi-section{margin:14px 0 18px}
+.sample-kpi-section-title{display:flex;align-items:baseline;gap:10px;margin:0 0 9px 2px}
+.sample-kpi-section-title b{font-size:14px;color:#25313b}
+.sample-kpi-section-title span{font-size:11px;color:var(--muted)}
+.sample-dashboard-kpis{display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr))!important;gap:10px!important;margin:0!important}
+.sample-dashboard-kpis .kpi{min-width:0;min-height:88px!important;padding:13px 14px!important;border-radius:12px!important}
+.sample-dashboard-kpis .kpi span{font-size:11px;line-height:1.2;color:var(--muted)}
+.sample-dashboard-kpis .kpi strong{font-size:26px;line-height:1.1;margin-top:6px}
+.sample-dashboard-grid{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:12px!important;margin:16px 0 18px!important}
+.sample-dashboard-card{min-height:150px;padding:15px!important}
+.sample-dashboard-card>b{font-size:13px}
+.sample-consolidated-panel .table-wrap{margin-top:8px}
+@media(max-width:1200px){.sample-filter-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}.sample-filter-actions{grid-column:1/-1}.sample-dashboard-kpis{grid-template-columns:repeat(3,minmax(0,1fr))!important}}
+@media(max-width:800px){.sample-dashboard-kpis{grid-template-columns:repeat(2,minmax(0,1fr))!important}.sample-dashboard-grid{grid-template-columns:1fr!important}.sample-kpi-section-title{flex-direction:column;gap:2px}}
+@media(max-width:560px){.sample-filter-grid,.sample-dashboard-kpis{grid-template-columns:1fr!important}.sample-filter-actions{display:grid;grid-template-columns:1fr 1fr;width:100%}}
+
+/* V2.4.0-H · Multi-Parameter Microbiology */
+.sample-parameter-select{border:1px solid #d7e2de;border-radius:12px;padding:11px 13px;background:#f8fbfa}.sample-parameter-select>span{display:block;font-weight:700;margin-bottom:8px}.sample-parameter-checks{display:flex;flex-wrap:wrap;gap:8px}.sample-parameter-checks label{display:flex;flex-direction:row;align-items:center;gap:7px;border:1px solid #cfe0da;border-radius:999px;padding:8px 12px;background:#fff;font-weight:600}.sample-parameter-checks input{width:auto;margin:0}.sample-parameter-results{display:grid;gap:14px;margin:16px 0}.sample-parameter-results .sample-result-card{margin:0}.sample-export-actions{display:flex;flex-wrap:wrap;gap:7px;justify-content:flex-end}.sample-table .pill{display:inline-block;margin:2px}.sample-consolidated-table{min-width:1980px}@media(max-width:720px){.sample-export-actions{justify-content:flex-start}.sample-parameter-checks{flex-direction:column}.sample-parameter-checks label{border-radius:10px}}
+
+/* V2.4.0-I · Agua de consumo 10 x 10 mL */
+.sample-drinking-grid{display:grid;grid-template-columns:repeat(5,minmax(150px,1fr));gap:12px;align-items:stretch;margin-top:12px}.sample-readonly-box{border:1px solid var(--line,#d9e2e8);border-radius:10px;padding:10px 12px;background:#f7faf9;display:flex;flex-direction:column;gap:5px}.sample-readonly-box span{font-size:.82rem;color:#65717e}.sample-readonly-box strong{font-size:1.2rem}.drinking-water-card{border-left:4px solid #1b8f78}@media(max-width:1000px){.sample-drinking-grid{grid-template-columns:repeat(2,minmax(150px,1fr))}}@media(max-width:640px){.sample-drinking-grid{grid-template-columns:1fr}}
+
+/* V2.4.1 · Validación y cierre de análisis */
+.sample-analysis-lock{margin:10px 0;padding:10px 14px;border-radius:10px;font-weight:800;font-size:13px}.sample-analysis-lock.draft{background:#fff7d6;color:#8a5a00;border:1px solid #f1d98a}.sample-analysis-lock.locked{background:#e8f6ef;color:#126347;border:1px solid #a9dbc8}.sample-analysis-validation{margin:10px 0 14px;padding:12px 14px;border-radius:10px;display:flex;flex-direction:column;gap:5px;font-size:13px}.sample-analysis-validation:empty{display:none}.sample-analysis-validation.ok{background:#eef9f4;border:1px solid #b6dfcf;color:#185f49}.sample-analysis-validation.bad{background:#fff3f1;border:1px solid #efc1bb;color:#8d2a21}.sample-analysis-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}.sample-analysis-panel input:disabled,.sample-analysis-panel select:disabled,.sample-analysis-panel textarea:disabled{background:#f1f4f5;color:#53616c;cursor:not-allowed}.pill.finalized{background:#e8f6ef;color:#126347}
+
+/* V2.4.2 · Auditoría y trazabilidad */
+.sample-trace-modal-card{width:min(980px,94vw);max-height:90vh;overflow:auto}.sample-trace-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:12px}.sample-trace-head h2{margin:0 0 4px}.sample-trace-note{margin:12px 0;padding:10px 12px;border:1px solid #cbd9d3;border-radius:10px;background:#f4f8f6;color:#365448;font-size:13px;font-weight:700}.sample-trace-timeline{max-height:55vh;overflow:auto;padding-right:4px}.trace-changes{display:grid;gap:6px;margin-top:8px}.trace-changes>div{display:grid;grid-template-columns:minmax(120px,180px) minmax(100px,1fr) auto minmax(100px,1fr);gap:8px;align-items:center;padding:6px 8px;background:#f8faf9;border-radius:8px;font-size:12px}.trace-changes span{font-weight:800}.trace-changes del{color:#8a3e36;text-decoration:none;background:#fff0ee;padding:3px 6px;border-radius:6px}.trace-changes ins{color:#176344;text-decoration:none;background:#eaf8f1;padding:3px 6px;border-radius:6px}.sample-trace-btn{white-space:nowrap}@media(max-width:720px){.sample-trace-head{flex-direction:column}.trace-changes>div{grid-template-columns:1fr}.trace-changes b{display:none}}
+
+/* V3.0.0-A · Product Traceability */
+.product-tabpane{display:none}.product-tabpane.active{display:block}
+.product-tabs{flex-wrap:wrap}
+.product-kpis{grid-template-columns:repeat(6,minmax(130px,1fr))}
+.notice{margin-top:12px;padding:12px 14px;border:1px solid var(--line,#d9e0e7);border-radius:10px;background:#f7f9fb}
+.muted{opacity:.75}
+button.danger{border-color:#b42318}
+@media(max-width:1100px){.product-kpis{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:700px){.product-kpis{grid-template-columns:repeat(2,1fr)}}
+
+/* V3.1.0-A · Equipment Control */
+.equipment-tabpane{display:none}.equipment-tabpane.active{display:block}
+.equipment-tabs{flex-wrap:wrap}
+.equipment-kpis{grid-template-columns:repeat(5,minmax(130px,1fr))}
+.equipment-status-grid{display:grid;grid-template-columns:repeat(2,minmax(280px,1fr));gap:14px}
+.equipment-status-card{border:1px solid var(--line,#dbe2e8);border-radius:14px;padding:16px;background:#fff}
+.equipment-status-card h4{margin:0 0 12px;font-size:18px}
+.equipment-status-card>div{display:grid;grid-template-columns:1fr auto;gap:4px 10px;padding:9px 0;border-top:1px solid #eef2f5}
+.equipment-status-card>div:first-of-type{border-top:0}
+.equipment-status-card small{grid-column:1/-1;opacity:.7}
+@media(max-width:1100px){.equipment-kpis{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:800px){.equipment-status-grid{grid-template-columns:1fr}.equipment-kpis{grid-template-columns:repeat(2,1fr)}}
+
+.field-summary{border:1px solid var(--line,#dbe2e8);border-radius:10px;padding:10px 12px;background:#f7f9fb;display:flex;flex-direction:column;gap:3px}
+.field-summary b{font-size:13px}.field-summary span{font-size:12px;opacity:.8}
+
+/* V3.1.0-C · Condiciones ambientales */
+.environment-kpis{grid-template-columns:repeat(4,minmax(150px,1fr))}
+#environmentTodayCard{margin:14px 0}
+@media(max-width:900px){.environment-kpis{grid-template-columns:repeat(2,1fr)}}
+
+.environment-correction-card{border:1px solid var(--line,#dbe2e8);border-radius:12px;padding:12px 14px;background:#f7f9fb;display:flex;justify-content:space-between;align-items:center;gap:16px}
+.environment-correction-card>div{display:flex;flex-direction:column;gap:4px}
+.environment-correction-card small{opacity:.8;line-height:1.35}
+
+/* V3.2.0-A · Carta de control de incubadora */
+.incubator-kpis{grid-template-columns:repeat(5,minmax(130px,1fr))}
+.incubator-reference-card{display:flex;justify-content:space-between;align-items:center;gap:16px;border:1px solid var(--line,#dbe2e8);border-radius:14px;padding:14px 16px;margin:14px 0;background:#f7f9fb}
+.incubator-reference-card>div{display:flex;flex-direction:column;gap:4px}
+.incubator-reference-card small{opacity:.75}
+.incubator-chart-wrap{overflow-x:auto;border:1px solid #e4e9ee;border-radius:14px;background:#fff;padding:8px}
+.incubator-chart{display:block;width:100%;min-width:850px;height:auto}
+.inc-grid{stroke:#e8edf1;stroke-width:1}
+.inc-limit{stroke:#c24a43;stroke-width:2;stroke-dasharray:8 6}
+.inc-center{stroke:#7a8694;stroke-width:2;stroke-dasharray:4 5}
+.inc-data-line{fill:none;stroke:#157a67;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+.inc-point{fill:#157a67;stroke:#fff;stroke-width:2}
+.inc-point-bad{fill:#b42318;stroke:#fff;stroke-width:2}
+.inc-axis{font-size:12px;fill:#667085}.inc-axis-title{font-size:13px;font-weight:700;fill:#475467}.inc-label{font-size:11px;font-weight:700;fill:#475467}.inc-empty{font-size:17px;fill:#98a2b3}
+.chart-legend{display:flex;gap:20px;flex-wrap:wrap;margin-top:10px;font-size:13px;color:#667085}
+.legend-line{display:inline-block;width:22px;height:3px;vertical-align:middle;margin-right:6px;border-radius:2px}.legend-line.data{background:#157a67}.legend-line.center{background:#7a8694}.legend-line.limit{background:#c24a43}
+.inline-actions{display:flex;align-items:end;gap:10px}.inline-actions label{display:flex;flex-direction:column;gap:4px}
+@media(max-width:900px){.incubator-kpis{grid-template-columns:repeat(2,1fr)}.incubator-reference-card{align-items:flex-start;flex-direction:column}}
+
+/* V3.2.0-C · Hub de Cartas de Control */
+.control-chart-hub{position:sticky;top:0;z-index:4;background:var(--bg,#f6f8fa)}
+.control-chart-selector{display:flex;gap:10px;flex-wrap:wrap}
+.control-chart-tab{border:1px solid var(--line,#d8e0e7);border-radius:12px;padding:11px 16px;background:#fff;font-weight:700;cursor:pointer}
+.control-chart-tab.active{background:#157a67;color:#fff;border-color:#157a67}
+.control-chart-tab:disabled{opacity:.55;cursor:not-allowed}
+.control-chart-pane{display:none}.control-chart-pane.active{display:block}
+.phmeter-kpis{grid-template-columns:repeat(4,minmax(150px,1fr))}
+.ph-chart{min-width:850px}
+@media(max-width:850px){.phmeter-kpis{grid-template-columns:repeat(2,1fr)}}
+
+/* V3.3.0-A Control de condiciones */
+.condition-subpane{display:none}.condition-subpane.active{display:block}.condition-subtab{border:1px solid #d7e0e5;background:#fff;border-radius:10px;padding:10px 16px;font-weight:700;cursor:pointer}.condition-subtab.active{background:#176b5b;color:#fff;border-color:#176b5b}.condition-subtab:disabled{opacity:.55;cursor:not-allowed}
+
+/* V3.3.0-B · Nevera 2 */
+#condition-refrigerator2:not(.active){display:none}
+
+/* V3.4.1-A · Limpieza rápida de áreas */
+.area-cleaning-layout{display:grid;gap:18px}
+.area-cleaning-card{border:1px solid var(--line,#dbe2e8);border-radius:14px;padding:18px;background:#fff}
+.checklist-box{border:1px solid #dce4ea;border-radius:12px;padding:12px 14px;display:flex;gap:18px;flex-wrap:wrap}
+.checklist-box legend{font-weight:800;padding:0 7px}
+.check-row{display:flex!important;flex-direction:row!important;align-items:center;gap:8px;font-weight:650}
+.check-row input{width:20px;height:20px}
+.area-cleaning-kpis{grid-template-columns:repeat(4,minmax(140px,1fr))}
+.notice.success{border-color:#9bd5c2;background:#edf9f4}
+@media(max-width:900px){.area-cleaning-kpis{grid-template-columns:repeat(2,1fr)}}
+
+/* V3.4.1-B · Producto de limpieza semanal automático */
+.weekly-product-card{display:flex;justify-content:space-between;align-items:center;gap:18px;border:1px solid #b9ddd2;background:#eff9f5;border-radius:14px;padding:15px 18px}
+.weekly-product-card>div{display:flex;flex-direction:column;gap:4px}
+.weekly-product-card span:first-child{font-size:.9rem;color:#667085}
+.weekly-product-card strong{font-size:1.2rem;color:#116b58}
+.weekly-product-card small{color:#667085}
+
+/* V3.4.2-C · Flujo laminar inteligente */
+.laminar-cleaning-box{border:1px solid #b9d7d2;background:#f4fbfa;border-radius:12px;padding:14px 16px;margin-top:4px}
+.laminar-cleaning-title{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:10px;color:#155e56}.laminar-cleaning-title span{font-size:.82rem;color:#5f6f6d}
+.laminar-cleaning-grid{margin:0}.laminar-auto-note{grid-column:1/-1;background:#e7f6f3;border-left:4px solid #178271;padding:10px 12px;border-radius:8px;font-size:.9rem;color:#31504c}
+
+/* V3.4.2-E · prioridades de limpieza */
+.cleaning-priority-panel{margin:14px 0;padding:14px;border:1px solid var(--line,#d7dee7);border-radius:14px;background:linear-gradient(180deg,#fff,#f8fafc)}
+.cleaning-priority-panel h4{margin:0 0 4px}.cleaning-priority-panel p{margin:0;color:#667085;font-size:.92rem}
+.cleaning-priority-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:10px;margin-top:10px}
+.cleaning-priority-card{display:grid;grid-template-columns:34px 1fr auto;align-items:center;gap:10px;padding:10px 12px;border:1px solid #e4e7ec;border-left:5px solid #f59e0b;border-radius:10px;background:#fff}
+.cleaning-priority-card.priority-0,.cleaning-priority-card.priority-1{border-left-color:#dc2626;background:#fff7f7}.cleaning-priority-card.priority-2{border-left-color:#f97316}.cleaning-priority-card.priority-3{border-left-color:#f59e0b}
+.priority-number{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font-weight:800;background:#f2f4f7}.priority-main{display:flex;flex-direction:column;gap:3px}.priority-main small{color:#667085}.priority-main span{font-size:.9rem}
+@media(max-width:760px){.cleaning-priority-card{grid-template-columns:30px 1fr}.cleaning-priority-card button{grid-column:1/-1}}
+
+/* V3.5.0-A · Roles y permisos */
+.role-badge{font-weight:800;letter-spacing:.02em}
+.role-admin{background:#e8f5ee;color:#146c43}
+.role-operador{background:#eef3ff;color:#3556a8}
+.role-supervisor{background:#fff5d9;color:#8a6500}
+.permissions-table select{min-width:180px}
+.access-readonly::before{
+  content:"SOLO LECTURA";
+  display:inline-block;
+  margin:0 0 12px 0;
+  padding:6px 10px;
+  border-radius:999px;
+  background:#fff3cd;
+  color:#7a5a00;
+  font-size:.78rem;
+  font-weight:800;
+}
+.nav[hidden]{display:none!important}
+
+/* V3.5.1-C · Firebase Authentication */
+.firebase-auth-box{margin-top:16px;padding:14px;border:1px solid #dce5ea;border-radius:12px;background:#f8fbfc}
+.firebase-auth-box h4{margin:0 0 10px}
+#firebaseAuthStatus[data-mode="SIGNED_IN"]{border-left:4px solid #1d7a62}
+#firebaseAuthStatus[data-mode="ERROR"],#firebaseAuthStatus[data-mode="MISMATCH"]{border-left:4px solid #b42318}
+
+/* V3.5.2-A — Secure Login + 30-minute inactivity */
+.secure-login-overlay{position:fixed;inset:0;z-index:99999;display:none;align-items:center;justify-content:center;background:rgba(246,249,251,.98);padding:24px}
+.secure-login-overlay.show{display:flex}
+.secure-login-card{width:min(440px,100%);background:#fff;border:1px solid #dce4ea;border-radius:18px;padding:26px;box-shadow:0 18px 50px rgba(0,0,0,.08)}
+.secure-login-brand h2{margin:0 0 4px}.secure-login-brand p{margin:0 0 18px;color:#64748b}
+.secure-login-form{display:grid;gap:14px}.secure-login-form label{display:grid;gap:6px;font-weight:700}
+.secure-login-form input{padding:12px 14px;border:1px solid #cfd9e1;border-radius:10px;font-size:1rem}
+.secure-login-form button{padding:12px 16px;border-radius:10px}
+body.secure-locked .layout,body.secure-locked .topbar{filter:blur(1px);pointer-events:none;user-select:none}
+.secure-session{display:flex;gap:6px;align-items:center}.header-logout{margin-left:8px}
+
+/* V3.5.2-B2 — Unified Login Session */
+.unified-auth-box input[readonly]{background:#f3f6f8}
+
+/* V3.5.2-B3 — Single Firebase Session State Fix */
+.unified-auth-box .actions{display:none!important}
+
+/* V3.5.3-A — Auditoría central */
+.audit-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+.audit-filters{margin-top:12px}
+.audit-actions{margin:10px 0}
+.audit-table td{vertical-align:top;max-width:320px}
+.audit-table td:last-child{white-space:normal;min-width:220px}
+#centralAuditPanel{border-left:4px solid #1b7f69}
+#centralAuditPanel .badge{white-space:nowrap}
+
+/* V3.5.3-B — Auditoría administrativa y seguridad */
+.security-admin-note{margin:10px 0;border-left:4px solid #9a6700}

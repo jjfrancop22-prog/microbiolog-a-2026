@@ -1,0 +1,1602 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Microbiología ERP V3.5.3-C</title>
+  <link rel="stylesheet" href="styles.css?v=V352A2" />
+</head>
+<body>
+<header class="topbar">
+  <div><h1>Microbiología ERP</h1><div class="version" id="appVersionLabel">V3.5.3-C · Production Security & Deployment Ready · Local-First</div></div>
+  <div class="top-actions">
+    <div class="session-user secure-session"><span>Usuario:</span> <b id="secureActiveUser">—</b></div><div id="activeRoleBadge" class="badge role-badge">—</div><button id="secureLogoutBtn" type="button" class="header-logout">Cerrar sesión</button>
+    <div id="syncBadge" class="badge offline">LOCAL</div>
+  </div>
+</header>
+
+<div id="secureLoginOverlay" class="secure-login-overlay" aria-hidden="false">
+  <div class="secure-login-card">
+    <div class="secure-login-brand"><h2>Microbiología ERP</h2><p>Acceso seguro</p></div>
+    <form id="secureLoginForm" class="secure-login-form">
+      <label>Correo Firebase<input id="secureLoginEmail" type="email" autocomplete="username" required placeholder="usuario@empresa.com"></label>
+      <label>Contraseña<input id="secureLoginPassword" type="password" autocomplete="current-password" required placeholder="Contraseña"></label>
+      <button class="primary" type="submit">Iniciar sesión</button>
+      <div id="secureLoginStatus" class="statusbox">Ingrese sus credenciales.</div>
+    </form>
+    <p class="hint">La sesión se cerrará automáticamente después de 30 minutos sin actividad.</p>
+  </div>
+</div>
+
+<div class="layout">
+  <aside class="sidebar">
+    <button class="nav" data-view="samples">🧾 Registro de muestra y duplicados</button>
+    <button class="nav" data-view="products">📦 Trazabilidad de productos</button>
+    <button class="nav" data-view="media">🧫 Control de medios preparados</button>
+    <button class="nav" data-view="strains">🦠 Preparación de cepas de referencia</button>
+    <button class="nav" data-view="coliforms">🧪 Control de calidad de muestras</button>
+    <button class="nav" data-view="micro">🔬 Control de calidad de áreas</button>
+    <button class="nav" data-view="equipment">♨️ Control de equipos y áreas</button>
+    <button class="nav active" data-view="dashboard">🏠 Dashboard</button>
+    <button class="nav" data-view="settings">⚙️ Administración</button>
+  </aside>
+  <main class="content">
+    <section id="view-dashboard" class="view active">
+      <div class="section-head"><div><h2>Dashboard</h2><p>Control de medios preparados con trazabilidad automática.</p></div></div>
+      <div class="kpis">
+        <article class="kpi"><span>Preparaciones</span><strong id="kpiPrep">0</strong></article>
+        <article class="kpi"><span>Pendientes QC</span><strong id="kpiPending">0</strong></article>
+        <article class="kpi"><span>Aptos</span><strong id="kpiApt">0</strong></article>
+        <article class="kpi"><span>Liberados</span><strong id="kpiReleased">0</strong></article>
+      </div>
+      <div class="panel principle"><h3>Regla oficial del proyecto</h3><p><b>Ninguna pantalla pedirá información que el sistema pueda calcular o deducir de forma confiable.</b></p></div>
+    </section>
+
+    <section id="view-media" class="view">
+      <div class="section-head"><div><h2>Control de medios preparados</h2><p>Preparación → QC → Prueba de rendimiento (cuando aplica) → Liberación → Inventario → Cierre.</p></div></div>
+      <div class="tabs">
+        <button class="tab active" data-tab="prep">Preparación</button>
+        <button class="tab" data-tab="qc">Control QC</button>
+        <button class="tab" data-tab="performance">Prueba de rendimiento</button>
+        <button class="tab" data-tab="release">Liberación</button>
+        <button class="tab" data-tab="inventory">Inventario</button>
+      </div>
+
+      <div id="tab-prep" class="tabpane active">
+        <div class="panel">
+          <h3>Nueva preparación</h3>
+          <form id="prepForm" class="form-grid">
+            <label>Fecha de preparación<input name="date" type="date" required></label>
+            <label>Medio<select name="medium" id="prepMediumSelect" required></select></label>
+            <label>Frasco / lote deshidratado<select name="bottleId" id="prepBottleSelect" required></select><small id="prepBottleHelp" class="field-help">Seleccione primero el medio.</small></label>
+            <label>Volumen (mL)<select name="volumeMl" id="prepVolumeSelect" required></select></label>
+            <label id="prepQuantityLabel">Cantidad preparada<input name="quantity" type="number" min="1" step="1" required><small id="prepQuantityHelp" class="field-help">Para agar corresponde al número real de cajas Petri preparadas.</small></label>
+            <label>Responsable<input id="prepResponsible" readonly></label>
+
+            <label>Tipo<input id="prepType" readonly></label>
+            <label>Prefijo<input id="prepPrefix" readonly></label>
+            <label>Año<input id="prepYear" readonly></label>
+            <label>Lote (XX)<input id="prepLotNumber" readonly></label>
+            <label>Código de lote<input id="prepLotCode" readonly></label>
+            <label>Unidad<input id="prepUnit" readonly></label>
+            <label>Concentración (g/L)<input id="prepConcentration" readonly></label>
+            <label>Masa teórica (g)<input id="prepTheoreticalMass" readonly></label>
+            <label>Fecha prog. esterilidad<input id="prepSterilityDue" type="date" readonly></label>
+            <label>Fecha prog. macroscópico<input id="prepMacroDue" type="date" readonly></label>
+            <label>Fecha vencimiento<input id="prepExpiry" type="date" readonly></label>
+            <label>Rendimiento inicial<input id="prepPerformanceRequirement" readonly></label>
+            <div id="prepPlateFeedback" class="wide plate-prep-feedback"><b>Inventario de cajas</b><span>Seleccione un medio y registre la cantidad preparada.</span></div><div class="wide actions"><button id="prepSaveBtn" type="submit" class="primary">Guardar preparación</button></div>
+          </form>
+          <p class="hint">El sistema calcula código, concentración, masa, fechas y determina automáticamente si el frasco requiere Productividad/Selectividad/Especificidad.</p>
+        </div>
+        <div class="panel"><h3>Preparaciones registradas</h3><div class="table-wrap"><table><thead><tr><th>Lote</th><th>Fecha</th><th>Medio</th><th>Frasco</th><th>Cantidad</th><th>Volumen</th><th>Masa</th><th>Vence</th><th>Estado</th><th>Alerta</th><th>Responsable</th></tr></thead><tbody id="prepRows"></tbody></table></div></div>
+      </div>
+
+      <div id="tab-qc" class="tabpane">
+        <div class="panel pending-qc-panel">
+          <div class="panel-heading-row"><div><h3>Pendientes de Control QC</h3><p class="hint">Solo lotes que todavía no tienen QC.</p></div><span id="qcPendingCount" class="pending-counter">0 pendientes</span></div>
+          <div class="table-wrap"><table><thead><tr><th>Lote</th><th>Fecha</th><th>Medio</th><th>Frasco</th><th>Rendimiento</th><th>Vence</th><th>Alerta</th><th></th></tr></thead><tbody id="qcPendingRows"></tbody></table></div>
+        </div>
+        <div class="panel" id="qcEntryPanel">
+          <h3>Control de calidad del medio</h3>
+          <form id="qcForm" class="form-grid">
+            <label class="wide">Lote preparado<select name="prepId" id="qcPrepSelect" required></select></label>
+            <label>Ausencia de turbidez<select name="noTurbidity" class="yesno-select" required></select></label>
+            <label>Ausencia de microorganismo<select name="noMicroorganism" class="yesno-select" required></select></label>
+            <label>Cumple esterilidad<select name="sterility" class="compliance-select" required></select></label>
+            <label>Cumple apariencia<select name="macroscopic" class="compliance-select" required></select></label>
+            <label>pH medido<input name="ph" type="number" step="0.01" required></label>
+            <label>Responsable<input id="qcResponsible" readonly></label>
+            <label>Color esperado<input id="qcExpectedColor" readonly></label>
+            <label>Apariencia esperada<input id="qcExpectedAppearance" readonly></label>
+            <label>pH mínimo<input id="qcPhMin" readonly></label>
+            <label>pH máximo<input id="qcPhMax" readonly></label>
+            <div id="qcRequirementCard" class="wide requirement-card"><b>Seleccione un lote</b><span>El ERP mostrará automáticamente su clasificación y las pruebas requeridas.</span></div>
+            <div id="performanceBlock" class="wide performance-block">
+              <div class="performance-head"><div><b>Prueba de rendimiento determinada por Catálogo Maestro</b><span id="performanceReason"></span></div><span id="bottleQualificationPill"></span></div>
+              <div class="performance-grid performance-readonly-grid">
+                <label>Productividad<select name="productivity" class="performance-select" disabled><option>N/A</option></select></label>
+                <label>Selectividad<select name="selectivity" class="performance-select" disabled><option>N/A</option></select></label>
+                <label>Especificidad<select name="specificity" class="performance-select" disabled><option>N/A</option></select></label>
+              </div>
+              <small class="field-help">Los resultados de rendimiento se registran en la pestaña “Prueba de rendimiento” y se vinculan con Reactivación de Cepas.</small>
+            </div>
+            <label class="wide">Observaciones<textarea name="notes" rows="2"></textarea></label>
+            <div class="wide auto-result">Resultado QC: <strong id="qcPreviewResult">—</strong></div>
+            <div class="wide actions"><button type="submit" class="primary">Guardar QC</button></div>
+          </form>
+        </div>
+        <div class="panel"><h3>Controles QC</h3><div class="table-wrap"><table><thead><tr><th>Lote</th><th>Medio</th><th>Frasco</th><th>Esterilidad</th><th>Apariencia</th><th>pH</th><th>Prod./Sel./Esp.</th><th>Resultado</th><th>Responsable</th></tr></thead><tbody id="qcRows"></tbody></table></div></div>
+      </div>
+
+      <div id="tab-performance" class="tabpane">
+        <div class="panel pending-qc-panel">
+          <div class="panel-heading-row"><div><h3>Rendimientos pendientes</h3><p class="hint">La tarea nace automáticamente con la primera preparación de un frasco/lote nuevo. No se vuelve a digitar información que ya existe en Reactivación de Cepas.</p></div><span id="performancePendingCount" class="pending-counter">0 pendientes</span></div>
+          <div class="table-wrap"><table><thead><tr><th>Tarea</th><th>Lote</th><th>Medio</th><th>Frasco</th><th>Pruebas requeridas</th><th>Completas</th><th>Estado</th><th></th></tr></thead><tbody id="performanceTaskRows"></tbody></table></div>
+        </div>
+        <div class="panel" id="performanceDetailPanel">
+          <h3>Evaluación de rendimiento</h3>
+          <p class="hint">Seleccione una tarea. El ERP enlaza reactivaciones APTAS y trae automáticamente lote de trabajo, fecha, turbidez y concentración. El analista registra únicamente la observación del ensayo.</p>
+          <label class="wide performance-task-picker">Tarea<select id="performanceTaskSelect"><option value="">Seleccione tarea</option></select></label>
+          <div id="performanceDetail"></div>
+        </div>
+      </div>
+
+      <div id="tab-release" class="tabpane">
+        <div class="panel">
+          <h3>Liberación</h3>
+          <form id="releaseForm" class="form-grid">
+            <label class="wide">Lote con QC APTO<select name="prepId" id="releasePrepSelect" required></select></label>
+            <label class="auto-hidden">Fecha<input id="releaseDate" readonly></label>
+            <label class="auto-hidden">Responsable<input id="releaseResponsible" readonly></label>
+            <div id="releaseAutoSummary" class="wide release-auto-summary"><b>Seleccione un lote con QC APTO</b><span>Fecha y responsable se asignan automáticamente.</span></div>
+            <label class="wide">Decisión<select name="decision" id="releaseDecisionSelect" required></select></label>
+            <div class="wide actions"><button type="submit" class="primary">Guardar decisión</button></div>
+          </form>
+          <p class="hint">Fecha y responsable se cargan automáticamente. Solo se registra la decisión.</p>
+        </div>
+        <div class="panel"><h3>Historial de liberación</h3><div class="table-wrap"><table><thead><tr><th>Lote</th><th>Medio</th><th>QC</th><th>Decisión</th><th>Fecha</th><th>Responsable</th></tr></thead><tbody id="releaseRows"></tbody></table></div></div>
+      </div>
+
+      <div id="tab-inventory" class="tabpane">
+        <div class="panel closure-panel">
+          <h3>Cierre del lote</h3>
+          <form id="closureForm" class="form-grid">
+            <label class="wide">Lote<select name="prepId" id="closurePrepSelect" required></select></label>
+            <label class="wide">Motivo real de cierre<select name="closureType" id="closureTypeSelect" required>
+              <option value="">Seleccione</option><option value="AGOTADO">Agotado / consumido completamente</option><option value="VENCIMIENTO">Desechado por vencimiento</option><option value="CONTAMINACION">Desechado por contaminación</option><option value="NO_CONFORMIDAD">Desechado por no conformidad</option><option value="DETERIORO">Desechado por deterioro</option><option value="OTRO">Otro motivo</option>
+            </select></label>
+            <label class="wide">Observación / justificación<textarea name="closureReason" rows="2" placeholder="Opcional para agotado; necesaria cuando el motivo requiere explicación"></textarea></label>
+            <div class="wide auto-fields">Fecha, hora y responsable se registrarán automáticamente con el usuario activo.</div>
+            <div class="wide actions"><button type="submit" class="primary">Cerrar lote</button></div>
+          </form>
+        </div>
+        <div class="panel"><h3>Inventario operativo y trazabilidad</h3><p class="hint">Se muestran lotes liberados o cerrados. Vigencia, disponibilidad y alertas son calculadas.</p><div class="table-wrap"><table><thead><tr><th>Lote</th><th>Medio</th><th>Frasco</th><th>Estado</th><th>Vence</th><th>Días restantes</th><th>Vigencia</th><th>Disponibilidad</th><th>Alerta</th><th>Cierre</th><th>Acción</th></tr></thead><tbody id="inventoryRows"></tbody></table></div></div>
+      </div>
+    </section>
+
+    <section id="view-strains" class="view">
+      <div class="section-head"><div><h2>🦠 Preparación de cepas de referencia</h2><p>Preparación → Inventario de crioviales → Reactivación → Consolidado automático.</p></div></div>
+      <div class="tabs strain-tabs">
+        <button class="strain-tab active" data-strain-tab="strain-prep">Preparación</button>
+        <button class="strain-tab" data-strain-tab="strain-react">Reactivación</button>
+        <button class="strain-tab" data-strain-tab="strain-inventory">Inventario de crioviales</button>
+        <button class="strain-tab" data-strain-tab="strain-consolidated">Consolidado</button>
+      </div>
+
+      <div id="strain-tab-strain-prep" class="strain-tabpane active">
+        <div class="panel">
+          <h3>Nueva preparación de cepa</h3>
+          <p class="hint">Los datos de identificación, incubación, caducidad y almacenamiento provienen del catálogo. El lote de trabajo, total de crioviales y vencimiento se calculan automáticamente.</p>
+          <form id="strainPrepForm" class="form-grid">
+            <label>Fecha apertura cepa<input name="referenceOpenedDate" type="date" required></label>
+            <label>Cepa<select name="strainId" id="strainPrepStrainSelect" required></select></label>
+            <label>ATCC / N° producto<input id="strainRefCode" readonly></label>
+            <label>Lote proveedor<input id="strainSupplierLot" readonly></label>
+            <label>Caducidad cepa referencia<input id="strainReferenceExpiry" type="date" readonly></label>
+            <label>Lote Agar Nutriente<select name="mediumPrepId" id="strainPrepMediumSelect" required></select><small id="strainMediumHelp" class="field-help"></small></label>
+            <label>N.º de caja AN utilizada<select id="strainPrepPlateSelect" required><option value="">Seleccione una caja AN disponible</option></select><small class="field-help">La caja queda UTILIZADA al guardar la activación/preparación de cepa.</small></label>
+            <label>Fecha preparación medio<input id="strainMediumPrepDate" type="date" readonly></label>
+            <label>Caducidad medio<input id="strainMediumExpiry" type="date" readonly></label>
+            <label>Fecha preparación cepa<input name="prepDate" type="date" required></label>
+            <label>Hora inicio incubación<input name="incubationStart" type="time" required></label>
+            <label>Tiempo incubación (h)<input id="strainIncubationHours" readonly></label>
+            <label>Hora fin incubación<input id="strainIncubationEnd" readonly></label>
+            <label>Temp. incubación (°C)<input id="strainIncubationTemp" readonly></label>
+            <label class="wide">Morfología esperada<input id="strainExpectedMorphology" readonly></label>
+            <label>Morfología conforme<select name="morphology" class="strain-yesno" required></select></label>
+            <label>Crecimiento adecuado<select name="growth" class="strain-yesno" required></select></label>
+            <label>Pureza conforme<select name="purity" class="strain-yesno" required></select></label>
+            <label class="auto-hidden">Resultado<input id="strainPrepResult" readonly></label>
+            <label># microviales reserva<input name="reserveCount" type="number" min="0" step="1" value="0" required></label>
+            <label># microviales trabajo<input name="workCount" type="number" min="0" step="1" value="10" required></label>
+            <label>Total microviales<input id="strainTotalCryovials" readonly></label>
+            <label>Lote reserva<input id="strainReserveLot" readonly></label>
+            <label>Lote trabajo<input id="strainWorkLot" readonly></label>
+            <label>Crioprotector<input id="strainCryoprotectant" value="Glicerol 20%" readonly></label>
+            <label>Volumen / microvial (mL)<input id="strainCryovialVolume" value="1" readonly></label>
+            <label>Turbidez BHI (McFarland)<input name="bhiBase" type="number" step="0.01" required></label>
+            <label>Turbidez BHI + inóculo<input name="bhiInoculated" type="number" step="0.01" required></label>
+            <label>Turbidez trabajo inicial<input id="strainTurbidityDelta" readonly></label>
+            <label>Cumplimiento turbidez<input id="strainTurbidityCompliance" readonly></label>
+            <label>Temp. almacenamiento<input id="strainStorageTemp" readonly></label>
+            <label>Ubicación / congelador<input name="storageLocation" required placeholder="Ej. Congelador Microbiología"></label>
+            <label>Preparado por<input id="strainPreparedBy" readonly></label>
+            <label>Verificado por<select name="verifiedBy" id="strainVerifierSelect" required></select></label>
+            <label>Disposición<input value="Cepa de Trabajo" readonly></label>
+            <div class="wide auto-hidden">Estado final: <strong id="strainPrepFinalStatus">—</strong></div><div id="strainPrepStateCard" class="wide state-card state-pending"><strong>PENDIENTE DE EVALUACIÓN</strong><span>Complete los controles de la preparación.</span></div>
+            <div class="wide actions"><button id="strainPrepSaveBtn" class="primary" type="submit">Guardar preparación y generar crioviales</button></div>
+          </form>
+        </div>
+        <div class="panel"><h3>Preparaciones de cepas</h3><div class="table-wrap"><table><thead><tr><th>ID</th><th>Fecha</th><th>Cepa</th><th>ATCC</th><th>Lote trabajo</th><th>Crioviales</th><th>Vence</th><th>Estado</th><th>Responsable</th></tr></thead><tbody id="strainPrepRows"></tbody></table></div></div>
+      </div>
+
+      <div id="strain-tab-strain-react" class="strain-tabpane">
+        <div class="panel">
+          <h3>Reactivación de cepa</h3>
+          <p class="hint">Solo aparecen cepas previamente preparadas, APTAS, con crioviales disponibles y vigentes para la fecha de reactivación. El ERP escoge automáticamente el lote con vencimiento más próximo (FEFO).</p>
+          <form id="strainReactForm" class="form-grid">
+            <label>Cepa<select name="strainId" id="reactStrainSelect" required></select></label>
+            <label>Lote seleccionado automáticamente<input id="reactWorkLot" readonly></label>
+            <label>Crioviales disponibles<input id="reactAvailable" readonly></label>
+            <label>Caducidad del lote<input id="reactExpiry" type="date" readonly></label>
+            <label>Fecha reactivación<input name="date" type="date" required></label>
+            <label>Cantidad a reactivar<input name="quantity" type="number" min="1" step="1" value="1" required></label>
+            <label>Lote Agar Nutriente<select name="mediumPrepId" id="reactMediumSelect" required></select></label>
+            <label>N.º de caja AN utilizada<select id="reactPlateSelect" required><option value="">Seleccione una caja AN disponible</option></select><small class="field-help">Solo cajas AN vigentes y disponibles; se descuentan automáticamente.</small></label>
+            <label>Caducidad AN<input id="reactMediumExpiry" type="date" readonly></label>
+            <label>Hora inicio incubación<input name="incubationStart" type="time" required></label>
+            <label>Tiempo incubación (h)<input id="reactIncubationHours" readonly></label>
+            <label>Hora fin incubación<input id="reactIncubationEnd" readonly></label>
+            <label>Temp. incubación (°C)<input id="reactIncubationTemp" readonly></label>
+            <label>Morfología conforme<select name="morphology" class="strain-yesno" required></select></label>
+            <label>Crecimiento adecuado<select name="growth" class="strain-yesno" required></select></label>
+            <label>Pureza conforme<select name="purity" class="strain-yesno" required></select></label>
+            <label class="auto-hidden">Resultado<input id="reactResult" readonly value="PENDIENTE DE EVALUACIÓN"></label>
+            <label>Turbidez BHI<input name="bhiBase" type="number" step="0.01" required></label>
+            <label>Turbidez BHI + inóculo<input name="bhiInoculated" type="number" step="0.01" required></label>
+            <label>Turbidez trabajo inicial<input id="reactTurbidityDelta" readonly></label>
+            <label>Cumple<input id="reactTurbidityCompliance" readonly></label>
+            <label>Concentración inicial UFC/mL<div class="sci-picker"><select name="initialMantissa" class="sci-mantissa" required></select><span>× 10</span><select name="initialExponent" class="sci-exponent" required></select><span>UFC/mL</span></div></label>
+            <label>Concentración final UFC/mL<div class="sci-picker"><select name="finalMantissa" class="sci-mantissa" required></select><span>× 10</span><select name="finalExponent" class="sci-exponent" required></select><span>UFC/mL</span></div></label>
+            <label>Uso<select name="use" id="reactUseSelect" required></select></label>
+            <label>Preparado por<input id="reactPreparedBy" readonly></label>
+            <label>Verificado por<select name="verifiedBy" id="reactVerifierSelect" required></select></label>
+            <label>Disposición final<input value="Autoclave" readonly></label>
+            <label class="wide">Observaciones<textarea name="notes" rows="2"></textarea></label>
+            <div id="reactStateCard" class="wide state-card state-pending"><strong>PENDIENTE DE EVALUACIÓN</strong><span>Complete todos los controles requeridos.</span></div>
+            <div class="wide actions"><button id="reactSaveBtn" class="primary" type="submit">Registrar reactivación</button></div>
+          </form>
+        </div>
+        <div class="panel"><h3>Historial de reactivaciones</h3><div class="table-wrap"><table><thead><tr><th>ID</th><th>Fecha</th><th>Cepa</th><th>Lote trabajo</th><th>Cantidad</th><th>Uso</th><th>Resultado</th><th>Responsable</th></tr></thead><tbody id="strainReactRows"></tbody></table></div></div>
+      </div>
+
+      <div id="strain-tab-strain-inventory" class="strain-tabpane">
+        <div class="panel"><h3>Inventario de crioviales</h3><p class="hint">No se editan saldos manualmente. Disponible = preparados − reactivados − bajas.</p><div class="table-wrap"><table><thead><tr><th>Cepa</th><th>Lote trabajo</th><th>Preparados</th><th>Reactivados</th><th>Bajas</th><th>Disponibles</th><th>% usado</th><th>Caducidad</th><th>Días restantes</th><th>Estado</th><th>Acción</th></tr></thead><tbody id="strainInventoryRows"></tbody></table></div></div>
+      </div>
+
+      <div id="strain-tab-strain-consolidated" class="strain-tabpane">
+        <div class="panel"><h3>Consolidado de crioviales</h3><p class="hint">Vista de solo lectura. Resume automáticamente todas las preparaciones, consumos, bajas, vencimientos y necesidad de reposición.</p><div class="table-wrap"><table><thead><tr><th>Cepa</th><th>Preparación vigente</th><th>Lote trabajo</th><th>Disponibles</th><th>Vence</th><th>Estado</th><th>Reposición</th></tr></thead><tbody id="strainConsolidatedRows"></tbody></table></div></div>
+      </div>
+    </section>
+    <section id="view-micro" class="view">
+      <div class="section-head"><div><h2>🔬 Control de calidad de áreas</h2><p>V2.2.0-A · Frecuencias fijas 7/15/30 días + Motor Inteligente + cola automática por próxima fecha.</p></div></div>
+      <div class="tabs micro-tabs">
+        <button class="micro-tab active" type="button" data-micro-tab="catalog">Catálogo de áreas · Paso 1</button>
+        <button class="micro-tab" type="button" data-micro-tab="planner">Planificador · Paso 2</button>
+        <button class="micro-tab" type="button" data-micro-tab="newcontrol">Nuevo control · Paso 3</button>
+        <button class="micro-tab" type="button" data-micro-tab="results">Resultados · Paso 4</button>
+        <button class="micro-tab" type="button" data-micro-tab="plates">Inventario de cajas · Paso 5</button>
+        <button class="micro-tab" type="button" data-micro-tab="consolidated">Consolidado · Paso 6</button>
+        <button class="micro-tab" type="button" data-micro-tab="frequency">Inteligencia de frecuencia · Paso 7</button>
+      </div>
+      <div id="micro-pane-catalog" class="micro-pane active">
+      <div class="kpis micro-kpis">
+        <article class="kpi"><span>Puntos configurados</span><strong id="mcKpiTotal">0</strong></article>
+        <article class="kpi"><span>Activos</span><strong id="mcKpiActive">0</strong></article>
+        <article class="kpi"><span>Críticos</span><strong id="mcKpiCritical">0</strong></article>
+        <article class="kpi"><span>Frecuencia 7 días</span><strong id="mcKpiWeekly">0</strong></article>
+      </div>
+      <div class="panel principle"><h3>Regla del módulo</h3><p><b>El punto de monitoreo define automáticamente tipo de control, frecuencia, medio, microorganismo, método y criterio.</b> El analista no volverá a escribir estos datos en cada control.</p></div>
+      <div class="panel"><h3>Catálogo Maestro de Áreas / Puntos de Control</h3><p class="hint">Precargado desde MC2109-03 Control Microbiológico 2026. Dar de baja no elimina el punto ni su trazabilidad.</p>
+        <form id="monitoringPointForm" class="form-grid compact-form">
+          <input type="hidden" name="id">
+          <label>Código<input name="code" required placeholder="MC-AREA-025"></label>
+          <label>Área / punto<input name="name" required></label>
+          <label>Tipo de control<select name="type" required><option value="">Seleccione</option><option>Ambiente</option><option>Superficie</option><option>Agua</option></select></label>
+          <label>Criticidad<select name="criticality" required><option>NORMAL</option><option>ALTA</option><option>CRÍTICA</option></select></label>
+          <label>Frecuencia<select name="frequency" required><option value="7">Cada 7 días</option><option value="15">Cada 15 días</option><option value="30">Cada 30 días</option></select></label>
+          <label>Días de frecuencia<input name="frequencyDays" type="number" value="7" readonly required><small>Fijo según selección: 7, 15 o 30 días.</small></label>
+          <label>Medio<select name="medium" required><option>PCA</option><option>PDA</option></select></label>
+          <label>Microorganismo<input name="microorganism" required></label>
+          <label class="wide">Método<input name="method" required></label>
+          <label>Exposición (min)<input name="exposureMinutes" type="number" min="0"></label>
+          <label>Diámetro placa (mm)<input name="plateDiameterMm" type="number" min="0"></label>
+          <label>Área hisopada (cm²)<input name="swabAreaCm2" type="number" min="0"></label>
+          <label>Límite objetivo<input name="limitTarget" type="number" step="0.01" min="0"></label>
+          <label>Límite máximo<input name="limitMax" type="number" step="0.01" min="0"></label>
+          <label>Unidad<input name="unit" required placeholder="UFC/100 cm²"></label>
+          <label class="wide">Fuente inicial del criterio<input name="criteriaSource" value="MC2109-03 / Instructivo interno" required></label><div class="wide hint">Los valores técnicos vigentes se administran en <b>Administración → Motor de Reglas y Criterios</b>. Este formulario conserva los valores iniciales para compatibilidad y migración.</div>
+          <div class="wide actions"><button class="primary" type="submit">Guardar punto</button><button id="clearMonitoringPointBtn" type="button">Limpiar</button></div>
+        </form>
+        <div class="table-wrap"><table class="monitoring-table"><thead><tr><th>Código</th><th>Área / punto</th><th>Tipo</th><th>Criticidad</th><th>Frecuencia</th><th>Medio</th><th>Microorganismo</th><th>Método</th><th>Criterio</th><th>Estado</th><th>Acción</th></tr></thead><tbody id="monitoringPointRows"></tbody></table></div>
+      </div>
+      </div>
+
+      <div id="micro-pane-planner" class="micro-pane">
+        <div class="kpis planner-kpis">
+          <article class="kpi"><span>Primer control</span><strong id="plannerKpiFirst">0</strong></article>
+          <article class="kpi"><span>Vencidos</span><strong id="plannerKpiOverdue">0</strong></article>
+          <article class="kpi"><span>Pendientes hoy</span><strong id="plannerKpiToday">0</strong></article>
+          <article class="kpi"><span>Próximos ≤ 3 días</span><strong id="plannerKpiUpcoming">0</strong></article>
+          <article class="kpi"><span>En tiempo</span><strong id="plannerKpiOnTime">0</strong></article>
+        </div>
+        <div class="panel principle">
+          <h3>Planificador automático</h3>
+          <p><b>No guarda estados manuales.</b> Calcula la situación de cada punto activo desde el último control válido + su frecuencia. Si la fecha programada cae sábado o domingo, se traslada automáticamente al lunes siguiente. Un punto sin historial aparece como <b>PRIMER CONTROL REQUERIDO</b>.</p>
+        </div>
+        <div class="panel">
+          <div class="planner-toolbar">
+            <label>Buscar<input id="plannerSearch" placeholder="Área, código, método..."></label>
+            <label>Tipo<select id="plannerTypeFilter"><option value="">Todos</option><option>Ambiente</option><option>Superficie</option><option>Agua</option></select></label>
+            <label>Criticidad<select id="plannerCriticalityFilter"><option value="">Todas</option><option>NORMAL</option><option>ALTA</option><option>CRÍTICA</option></select></label>
+            <label>Estado<select id="plannerStatusFilter"><option value="">Todos</option><option value="FIRST">Primer control</option><option value="OVERDUE">Vencido</option><option value="TODAY">Pendiente hoy</option><option value="UPCOMING">Próximo</option><option value="ON_TIME">En tiempo</option><option value="CONFIG">Configuración requerida</option></select></label>
+          </div>
+          <div id="plannerCards" class="planner-grid"></div>
+        </div>
+        <div class="panel">
+          <h3>Próximos 7 días</h3>
+          <p class="hint">Vista calculada. No crea tareas duplicadas ni modifica el catálogo.</p>
+          <div id="plannerWeek" class="planner-week"></div>
+        </div>
+      </div>
+
+      <div id="micro-pane-newcontrol" class="micro-pane">
+        <div class="panel principle">
+          <h3>Nuevo Control Inteligente</h3>
+          <p><b>El analista registra únicamente la observación real.</b> Área, método, medio, microorganismo, criterio, hora y responsable se recuperan automáticamente. <b>La fecha queda editable temporalmente para carga histórica.</b></p>
+        </div>
+        <div class="panel">
+          <h3>Control microbiológico</h3>
+          <form id="microControlForm" class="form-grid">
+            <label>Código de control<input id="microControlCode" readonly></label>
+            <label>Fecha<input id="microControlDate" name="controlDate" type="date" required><small>Editable para registrar controles históricos.</small></label>
+            <label>Hora<input id="microControlTime" name="controlTime" type="time" readonly></label>
+            <label>Responsable<input id="microControlResponsible" readonly></label>
+            <label class="wide">Área / punto<select id="microControlPointSelect" name="pointId" required></select></label>
+            <label>Tipo<input id="microControlType" readonly></label>
+            <label>Criticidad<input id="microControlCriticality" readonly></label>
+            <label>Frecuencia<input id="microControlFrequency" readonly></label>
+            <label>Medio requerido<input id="microControlMedium" readonly></label>
+            <label>N.º de caja preparada<select id="microControlPlateSelect" required><option value="">Seleccione una caja disponible</option></select><small class="field-help">Solo cajas liberadas, vigentes y disponibles del medio requerido.</small></label>
+            <label>Microorganismo<input id="microControlMicroorganism" readonly></label>
+            <label class="wide">Método<input id="microControlMethod" readonly></label>
+            <label>Exposición (min)<input id="microControlExposure" readonly></label>
+            <label>Diámetro placa (mm)<input id="microControlDiameter" readonly></label>
+            <label>Área hisopada (cm²)<input id="microControlSwabArea" readonly></label>
+            <label>Unidad de resultado<input id="microControlUnit" readonly></label>
+            <div id="microCriterionCard" class="wide requirement-card"><b>Seleccione un punto</b><span>El Motor de Criterios mostrará la versión vigente y su fuente.</span></div>
+            <div id="microMethodInputs" class="wide smart-input-block"></div>
+            <label class="wide">Observaciones<textarea id="microControlNotes" name="notes" rows="3" placeholder="Registre solo observaciones relevantes del ensayo."></textarea></label>
+            <div id="microControlResultCard" class="wide state-card state-pending"><strong>PENDIENTE</strong><span>Complete los datos observados para calcular el resultado.</span></div>
+            <div class="wide plate-assignment-note"><b>Trazabilidad de caja:</b> al registrar el control, la caja seleccionada queda UTILIZADA y el Paso 5 actualiza el saldo automáticamente.</div>
+            <div class="wide actions"><button id="microControlSaveBtn" class="primary" type="submit">Registrar control</button><button id="microControlCancelBtn" type="button">Volver al Planificador</button></div>
+          </form>
+        </div>
+      </div>
+
+      <div id="micro-pane-results" class="micro-pane">
+        <div class="kpis micro-results-kpis">
+          <article class="kpi"><span>Controles</span><strong id="microResultKpiTotal">0</strong></article>
+          <article class="kpi"><span>Cumple</span><strong id="microResultKpiPass">0</strong></article>
+          <article class="kpi"><span>Alerta</span><strong id="microResultKpiAlert">0</strong></article>
+          <article class="kpi"><span>No cumple</span><strong id="microResultKpiFail">0</strong></article>
+          <article class="kpi"><span>% cumplimiento</span><strong id="microResultKpiCompliance">0%</strong></article>
+        </div>
+        <div class="panel principle">
+          <h3>Resultados automáticos</h3>
+          <p><b>El resultado no se transcribe ni se reclasifica manualmente.</b> Esta vista recupera el cálculo, la unidad y el criterio que quedaron congelados al registrar cada control.</p>
+        </div>
+        <div class="panel">
+          <div class="planner-toolbar micro-results-toolbar">
+            <label>Buscar<input id="microResultSearch" placeholder="Código, área, medio, responsable..."></label>
+            <label>Desde<input id="microResultDateFrom" type="date"></label>
+            <label>Hasta<input id="microResultDateTo" type="date"></label>
+            <label>Tipo<select id="microResultTypeFilter"><option value="">Todos</option><option>Ambiente</option><option>Superficie</option><option>Agua</option></select></label>
+            <label>Estado<select id="microResultStatusFilter"><option value="">Todos</option><option value="CUMPLE">Cumple</option><option value="ALERTA">Alerta</option><option value="NO CUMPLE">No cumple</option></select></label>
+          </div>
+          <div class="micro-results-actions"><button id="microResultClearFilters" type="button">Limpiar filtros</button><button id="microResultExportExcel" class="primary" type="button">Exportar Excel</button></div>
+          <div class="table-wrap"><table class="micro-results-table"><thead><tr><th>Código</th><th>Fecha / hora</th><th>Área / punto</th><th>Tipo</th><th>Medio</th><th>Microorganismo</th><th>Observación</th><th>Resultado</th><th>Estado</th><th>Responsable</th><th>Detalle</th></tr></thead><tbody id="microResultRows"></tbody></table></div>
+          <p id="microResultSummary" class="hint"></p>
+        </div>
+      </div>
+      <div id="micro-pane-plates" class="micro-pane">
+        <div class="kpis micro-results-kpis">
+          <article class="kpi"><span>Cajas preparadas</span><strong id="plateKpiPrepared">0</strong></article>
+          <article class="kpi"><span>Disponibles</span><strong id="plateKpiAvailable">0</strong></article>
+          <article class="kpi"><span>Utilizadas</span><strong id="plateKpiUsed">0</strong></article>
+          <article class="kpi"><span>Próximas a vencer ≤3 días</span><strong id="plateKpiExpiring">0</strong></article>
+          <article class="kpi"><span>Vencidas pendientes de baja</span><strong id="plateKpiUnavailable">0</strong></article>
+        </div>
+        <div id="plateExpiryAlert" class="plate-expiry-alert" hidden></div>
+        <div class="panel principle">
+          <h3>Inventario automático de cajas Petri</h3>
+          <p><b>La cantidad nace en Preparación.</b> Para cada lote de agar, el ERP genera virtualmente Caja 001…Caja N. El saldo se calcula como preparadas − utilizadas − bajas; no se digita manualmente.</p>
+        </div>
+        <div class="panel">
+          <div class="planner-toolbar micro-results-toolbar">
+            <label>Buscar<input id="plateInventorySearch" placeholder="Lote, medio, frasco..."></label>
+            <label>Medio<select id="plateInventoryMedium"><option value="">Todos</option><option>PCA</option><option>PDA</option><option>EMB</option><option>AN Agar nutrients</option><option>BHI</option></select></label>
+            <label>Estado<select id="plateInventoryStatus"><option value="">Todos</option><option>DISPONIBLE</option><option>AGOTADO</option><option>VENCIDO</option><option>BAJA</option><option>NO LIBERADO</option></select></label>
+          </div>
+          <div class="table-wrap"><table><thead><tr><th>Lote</th><th>Medio</th><th>Preparadas</th><th>Utilizadas</th><th>Bajas</th><th>Saldo físico</th><th>Vence</th><th>Estado</th><th>Acción</th></tr></thead><tbody id="plateInventoryRows"></tbody></table></div>
+          <p class="hint">Las cajas solo quedan disponibles después de la liberación. PCA/PDA se consumen en Nuevo control; AN se consume en Activación/Reactivación de cepas. Las cajas vencidas quedan bloqueadas y pasan directamente a baja.</p>
+        </div>
+      </div>
+
+      <div id="micro-pane-consolidated" class="micro-pane">
+        <div class="kpis micro-results-kpis">
+          <article class="kpi"><span>Lotes de agar</span><strong id="conKpiLots">0</strong></article>
+          <article class="kpi"><span>Cajas preparadas</span><strong id="conKpiPrepared">0</strong></article>
+          <article class="kpi"><span>Usos en controles</span><strong id="conKpiControls">0</strong></article>
+          <article class="kpi"><span>Usos en cepas</span><strong id="conKpiStrains">0</strong></article>
+          <article class="kpi"><span>Disponibles</span><strong id="conKpiAvailable">0</strong></article>
+          <article class="kpi"><span>Vencidas / baja</span><strong id="conKpiUnavailable">0</strong></article>
+        </div>
+        <div class="panel principle">
+          <h3>Consolidado integral de trazabilidad</h3>
+          <p><b>Vista de solo lectura.</b> Une Preparación, Liberación, Inventario de cajas, Nuevo Control y Activación/Reactivación de cepas. Los saldos y usos se calculan desde los registros originales; no se editan aquí.</p>
+        </div>
+        <div class="panel">
+          <div class="planner-toolbar micro-results-toolbar">
+            <label>Buscar<input id="consolidatedSearch" placeholder="Lote, medio, caja, control, cepa..."></label>
+            <label>Medio<select id="consolidatedMedium"><option value="">Todos</option><option>PCA</option><option>PDA</option><option>AN Agar nutrients</option></select></label>
+            <label>Estado<select id="consolidatedStatus"><option value="">Todos</option><option>DISPONIBLE</option><option>AGOTADO</option><option>VENCIDO</option><option>BAJA</option><option>NO LIBERADO</option></select></label>
+            <div class="micro-results-actions"><button id="consolidatedClear" type="button">Limpiar filtros</button><button id="consolidatedExport" class="primary" type="button">Exportar Excel</button></div>
+          </div>
+          <div class="table-wrap"><table><thead><tr><th>Lote</th><th>Medio</th><th>Preparación</th><th>Liberación</th><th>Preparadas</th><th>Control</th><th>Activación</th><th>Reactivación</th><th>Bajas</th><th>Saldo</th><th>Vence</th><th>Estado</th><th>Detalle</th></tr></thead><tbody id="consolidatedRows"></tbody></table></div>
+          <p id="consolidatedSummary" class="hint"></p>
+        </div>
+        <div class="panel">
+          <h3>Últimos movimientos de cajas</h3>
+          <p class="hint">Trazabilidad cronológica de uso y baja. Cada movimiento conserva la caja física, proceso, fecha y responsable.</p>
+          <div class="table-wrap"><table><thead><tr><th>Fecha</th><th>Caja</th><th>Medio / lote</th><th>Movimiento</th><th>Proceso relacionado</th><th>Responsable</th></tr></thead><tbody id="consolidatedEventRows"></tbody></table></div>
+        </div>
+      </div>
+
+      <div id="micro-pane-frequency" class="micro-pane">
+        <div class="kpis frequency-kpis">
+          <article class="kpi"><span>Recomendaciones de cambio</span><strong id="freqKpiRecommendations">0</strong></article>
+          <article class="kpi"><span>Aumentar vigilancia</span><strong id="freqKpiTighten">0</strong></article>
+          <article class="kpi"><span>Puede ampliarse</span><strong id="freqKpiExpand">0</strong></article>
+          <article class="kpi"><span>Mantener actual</span><strong id="freqKpiStable">0</strong></article>
+        </div>
+        <div class="panel principle">
+          <h3>V2.2.0 — Motor Inteligente de Frecuencia de Monitoreo</h3>
+          <p><b>El motor analiza; no cambia frecuencias por sí solo.</b> Las únicas frecuencias operativas son <b>7, 15 y 30 días</b>. Si detecta una alerta o un NO CUMPLE, recomienda aumentar vigilancia. Para ampliar frecuencia exige una racha estable de resultados CUMPLE durante al menos 180 días. Toda decisión queda auditada.</p>
+        </div>
+        <div class="panel frequency-rules">
+          <h3>Reglas activas del motor</h3>
+          <div class="rule-grid">
+            <div><b>NO CUMPLE reciente</b><span>30 → 15 días · 15 → 7 días · 7 se mantiene.</span></div>
+            <div><b>ALERTA reciente</b><span>El motor recomienda aumentar un nivel de vigilancia, sin aplicarlo automáticamente.</span></div>
+            <div><b>Estabilidad ≥ 180 días</b><span>Con al menos 6 controles CUMPLE consecutivos: 7 → 15 o 15 → 30 días.</span></div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-heading-row"><div><h3>Recomendaciones por punto</h3><p class="hint">El índice de riesgo es orientativo y combina criticidad + resultados recientes. La aprobación final corresponde al Responsable de Calidad.</p></div></div>
+          <div class="table-wrap"><table class="frequency-table"><thead><tr><th>Punto</th><th>Criticidad</th><th>Actual</th><th>Recomendada</th><th>Riesgo</th><th>Historial</th><th>Último resultado</th><th>Justificación</th><th>Decisión</th></tr></thead><tbody id="frequencyIntelligenceRows"></tbody></table></div>
+        </div>
+      </div>
+
+    </section>
+    <section id="view-coliforms" class="view">
+      <div class="section-head"><div><h2>🧪 Control de calidad de muestras</h2><p>Motor único Q1 + Q2 + Q3. Programa fechas, verifica A-1 Medium y enlaza reactivaciones semanales antes de permitir el ensayo.</p></div></div>
+      <div class="kpis qc-kpis">
+        <article class="kpi"><span>Vencidos / hoy</span><strong id="qcKpiDue">0</strong></article>
+        <article class="kpi"><span>Controles listos</span><strong id="qcKpiReady">0</strong></article>
+        <article class="kpi"><span>Lotes A-1 vigentes</span><strong id="qcKpiA1">0</strong></article>
+        <article class="kpi"><span>Reactivaciones vigentes</span><strong id="qcKpiReact">0</strong></article>
+      </div>
+      <div class="panel qc-rule-banner"><h3>Reglas activas</h3><div class="rule-grid"><div><b>Q1 · cada 2 días calendario</b><span>Solo martes, miércoles y jueves. Si cae lunes/viernes/fin de semana, avanza al siguiente martes.</span></div><div><b>Q2 · cada 15 días</b><span>Misma regla operativa de Q1. Primera quincena positivo; segunda quincena negativo.</span></div><div><b>Q3 · diario</b><span>Solo lunes a jueves. Viernes, sábado y domingo no se programan.</span></div><div><b>Recursos obligatorios</b><span>A-1 Medium LIBERADO y vigente. Q1/Q2 además requieren reactivación APTA de la cepa correcta en la misma semana.</span></div></div></div>
+      <div class="panel qc-first-load-panel"><div class="panel-heading-row"><div><h3>Primera carga / ingreso histórico</h3><p class="hint">Permite registrar poco a poco controles Q1, Q2 y Q3 ya realizados para construir el histórico y probar el planificador. No obliga a que la fecha histórica coincida con las reglas operativas actuales; cualquier excepción queda marcada en auditoría.</p></div><button type="button" class="primary" onclick="openQCHistoricalEntry()">Ingresar control histórico</button></div></div>
+      <div class="panel"><div class="panel-heading-row"><div><h3>Planificador QC</h3><p class="hint">La próxima fecha se recalcula desde la fecha real del último control. El sistema nunca retrocede una fecha para acomodarla.</p></div></div><div id="qcPlannerCards" class="qc-planner-grid"></div></div>
+      <div id="qcExecutionPanel" class="panel qc-execution" hidden><div class="panel-heading-row"><div><h3 id="qcExecTitle">Registrar control</h3><p class="hint">Fase automática: <b id="qcExecPhase">—</b>. El analista registra únicamente las observaciones reales.</p></div><button type="button" onclick="closeQCExecution()">Cerrar</button></div>
+        <form id="coliformQCForm" class="form-grid">
+          <div id="qcHistoricalSelector" class="wide qc-history-entry-tools" hidden>
+            <label>Tipo de control histórico<select name="historicalType"><option value="Q1">Q1</option><option value="Q2">Q2</option><option value="Q3">Q3</option></select></label>
+            <div class="qc-history-entry-note"><b>Modo histórico</b><span>Registra el dato real tal como ocurrió. La fecha puede ser anterior al plan actual; las dependencias A-1 y cepa se buscan según esa fecha.</span></div>
+          </div>
+          <label>Fecha real del control<input name="actualDate" type="date" required></label>
+          <div id="qcQ3MediumSelector" class="wide qc-history-entry-tools" hidden>
+            <div>
+              <b>Medio(s) a controlar en Q3</b>
+              <div class="sample-parameter-checks">
+                <label><input type="checkbox" name="q3MediumA1" checked> A-1 Medium</label>
+                <label><input type="checkbox" name="q3MediumLMX" checked> Fluorocult LMX</label>
+              </div>
+              <small class="hint">Puede registrar ambos medios el mismo día o únicamente el medio que realmente se controló. El sistema exige lote vigente solo para los medios seleccionados.</small>
+            </div>
+          </div>
+          <label id="qcA1PrepWrap">A-1 Medium vigente<select name="a1PrepId" required></select></label>
+          <label id="qcLMXPrepWrap">Fluorocult LMX vigente<select name="lmxPrepId" required></select></label>
+          <label>Reactivación semanal A-1<select name="reactivationId"></select></label>
+          <label>Reactivación semanal LMX<select name="reactivationIdTotal"></select><small class="hint">En fase positiva puede compartir la misma reactivación de E. coli. En fase negativa usa la cepa configurada para LMX.</small></label>
+          <label>Hora inicio 35 °C<input name="start35" type="time" required></label>
+          <label>Temperatura etapa 35 °C<select name="temp35" required><option value="34.5">34.5 °C</option><option value="34.6">34.6 °C</option><option value="34.7">34.7 °C</option><option value="34.8">34.8 °C</option><option value="34.9">34.9 °C</option><option value="35.0" selected>35.0 °C</option><option value="35.1">35.1 °C</option><option value="35.2">35.2 °C</option><option value="35.3">35.3 °C</option><option value="35.4">35.4 °C</option><option value="35.5">35.5 °C</option></select><small class="hint">Rango permitido 34,5–35,5 °C · valor inicial 35,0 °C</small></label>
+          <label>Hora fin 35 °C<input name="end35" type="time" required></label>
+          <label>Duración 35 °C<input id="qcHours35" readonly></label>
+          <label>Hora inicio 44,5 °C<input name="start44" type="time" required></label>
+          <label>Temperatura etapa 44,5 °C<select name="temp44" required><option value="44.0">44.0 °C</option><option value="44.1">44.1 °C</option><option value="44.2">44.2 °C</option><option value="44.3">44.3 °C</option><option value="44.4">44.4 °C</option><option value="44.5" selected>44.5 °C</option><option value="44.6">44.6 °C</option><option value="44.7">44.7 °C</option><option value="44.8">44.8 °C</option><option value="44.9">44.9 °C</option><option value="45.0">45.0 °C</option></select><small class="hint">Rango permitido 44,0–45,0 °C · valor inicial 44,5 °C</small></label>
+          <label>Hora fin 44,5 °C<input name="end44" type="time" required></label>
+          <label>Duración 44,5 °C<input id="qcHours44" readonly></label>
+          <div id="qcQ2Fields" class="wide qc-q2-fields" hidden>
+            <div class="qc-q2-header wide">
+              <label>Tipo / matriz fortificada<select name="matrix"><option value="Agua destilada">Agua destilada · AD</option></select><small class="hint">Una sola muestra fortificada; cada medio conserva su propio patrón de tubos y NMP.</small></label>
+              <label>Código de muestra<input name="sampleCode" value="AD-1" readonly><small class="hint">Automático · consecutivo independiente por tipo · reinicia cada año.</small></label>
+            </div>
+            <div class="qc-medium-result-card qc-a1-card wide">
+              <div class="qc-medium-result-head"><div><b>A‑1 Medium · Coliformes fecales</b><span id="qcA1PhaseBadge">Resultado independiente</span></div><strong id="qcA1Pattern">— · — · —</strong></div>
+              <div class="qc-medium-result-grid">
+                <label>Tubos + 10 mL<select name="pos10"><option value="">Seleccione</option><option>0</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></label>
+                <label>Tubos + 1 mL<select name="pos1"><option value="">Seleccione</option><option>0</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></label>
+                <label>Tubos + 0,1 mL<select name="pos01"><option value="">Seleccione</option><option>0</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></label>
+                <label>NMP/100 mL automático<input id="qcMpnResult" readonly></label>
+                <label>Formación de gas<select name="gas" required><option value="">Seleccione</option><option value="SI">SI</option><option value="NO">NO</option></select></label>
+                <label>Crecimiento / turbidez<select name="growth" required><option value="">Seleccione</option><option value="SI">SI</option><option value="NO">NO</option></select></label>
+              </div>
+            </div>
+            <div class="qc-medium-result-card qc-lmx-card wide">
+              <div class="qc-medium-result-head"><div><b>Fluorocult LMX · Coliformes totales</b><span id="qcLmxPhaseBadge">Resultado independiente</span></div><strong id="qcLmxPattern">— · — · —</strong></div>
+              <div class="qc-medium-result-grid">
+                <label>Tubos + 10 mL<select name="lmxPos10"><option value="">Seleccione</option><option>0</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></label>
+                <label>Tubos + 1 mL<select name="lmxPos1"><option value="">Seleccione</option><option>0</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></label>
+                <label>Tubos + 0,1 mL<select name="lmxPos01"><option value="">Seleccione</option><option>0</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></label>
+                <label>NMP/100 mL automático<input id="qcLmxMpnResult" readonly></label>
+                <label>Crecimiento<select name="lmxGrowth" required><option value="">Seleccione</option><option value="SI">SI</option><option value="NO">NO</option></select></label>
+                <label>Color azul-verde<select name="lmxColor" required><option value="">Seleccione</option><option value="SI">SI</option><option value="NO">NO</option></select></label>
+                <label>Fluorescencia<select name="lmxFluorescence" required><option value="">Seleccione</option><option value="SI">SI</option><option value="NO">NO</option></select></label>
+              </div>
+            </div>
+          </div>
+          <div id="qcQ1Q3Observations" class="wide qc-observation-grid">
+            <label class="qc-q3-a1-field">Formación de gas · A-1<select name="gasFallback" required><option value="">Seleccione</option><option value="SI">SI</option><option value="NO">NO</option></select></label>
+            <label class="qc-q3-a1-field">Crecimiento / turbidez · A-1<select name="growthFallback" required><option value="">Seleccione</option><option value="SI">SI</option><option value="NO">NO</option></select></label>
+            <label class="qc-q3-lmx-field">Crecimiento · LMX<select name="lmxGrowthFallback" required><option value="">Seleccione</option><option value="SI">SI</option><option value="NO">NO</option></select></label>
+            <label class="qc-q3-lmx-field">Color azul-verde · LMX<select name="lmxColorFallback" required><option value="">Seleccione</option><option value="SI">SI</option><option value="NO">NO</option></select></label>
+            <label class="qc-q3-lmx-field">Fluorescencia · LMX<select name="lmxFluorescenceFallback" required><option value="">Seleccione</option><option value="SI">SI</option><option value="NO">NO</option></select></label>
+          </div>
+          <div class="wide qc-criteria" id="qcCriteriaSummary"></div>
+          <label class="wide">Observaciones<textarea name="notes" rows="2"></textarea></label>
+          <div class="wide auto-result">Resultado automático: <strong id="qcExecResult" class="qc-result-pending">PENDIENTE</strong></div>
+          <div class="wide actions"><button id="coliformQCSaveBtn" type="button" class="primary">Guardar control QC</button></div>
+        </form>
+      </div>
+      <div class="panel"><h3>Trazabilidad de reactivaciones para Q1/Q2</h3><p class="hint">Una reactivación APTA puede alimentar varios controles compatibles de la misma semana. Al terminar la semana queda en baja automática para QC, sin consumir un nuevo criovial por cada ensayo.</p><div class="table-wrap"><table><thead><tr><th>Reactivación</th><th>Fecha</th><th>Cepa</th><th>Lote trabajo</th><th>Estado QC</th><th>Controles vinculados</th><th>Fin de vigencia QC</th></tr></thead><tbody id="qcReactivationRows"></tbody></table></div></div>
+      <div class="panel"><h3>Histórico Q1 / Q2 / Q3</h3><div class="table-wrap"><table class="qc-history-table"><thead><tr><th>Código</th><th>Fecha real</th><th>Tipo</th><th>Actividad</th><th>Fase</th><th>Cepa</th><th>A-1</th><th>Reactivación</th><th>35 °C</th><th>44,5 °C</th><th>NMP</th><th>Gas / crecimiento</th><th>Resultado</th><th>Responsable</th></tr></thead><tbody id="qcHistoryRows"></tbody></table></div></div>
+    </section>
+
+
+    <section id="view-samples" class="view">
+      <div class="section-head"><div><h2>🧾 Registro de muestra y duplicados</h2><p>V2.4.3 · Reporte Excel Final Profesional · consolidado, parámetros individuales, cierre y trazabilidad.</p></div></div>
+      <div class="kpis sample-kpis"><article class="kpi"><span>Muestras</span><strong id="sampleKpiTotal">0</strong></article><article class="kpi"><span>Pendientes análisis</span><strong id="sampleKpiPending">0</strong></article><article class="kpi"><span>Analizadas</span><strong id="sampleKpiAnalyzed">0</strong></article><article class="kpi"><span>Duplicados</span><strong id="sampleKpiDuplicates">0</strong></article></div>
+
+      <div class="panel sample-flow-banner"><b>Flujo inteligente</b><span>La recepción registra una sola vez los datos primarios. El analista completa únicamente las condiciones y resultados. El duplicado hereda los datos primarios, recibe código <b>-R</b> y conserva un resultado independiente.</span></div>
+
+      <div class="panel"><h3>1. Registro de muestra</h3><p class="muted">Datos primarios de campo y recepción. Puede corregirse después con <b>Editar registro</b> sin perder la trazabilidad.</p><form id="sampleIntakeForm" class="sample-intake-grid"><input type="hidden" name="editId" value="">
+        <label>Código de muestra<input name="code" required placeholder="Ej. 2456"></label>
+        <label>Tipo de muestra<select name="sampleType" required><option value="">Seleccione</option><option>Agua residual</option><option>Agua natural</option><option>Agua de consumo</option><option>Suelo</option><option>Lodos</option></select></label>
+        <div class="sample-parameter-select span-2"><span>Parámetros solicitados</span><div class="sample-parameter-checks"><label><input type="checkbox" name="parameters" value="Coliformes fecales" checked> Coliformes fecales</label><label><input type="checkbox" name="parameters" value="Coliformes totales"> Coliformes totales</label><label><input type="checkbox" name="parameters" value="E. coli"> E. coli</label></div><small class="hint">Una misma muestra puede incluir uno, dos o los tres parámetros.</small></div>
+        <label>Fecha de ingreso<input type="date" name="receiptDate" required></label>
+        <label>Hora de toma<input type="time" name="sampleTime"></label>
+        <label>Iniciales de toma de muestra<select name="sampler" required><option value="">Seleccione</option><option>AC</option><option>VV</option><option>JN</option><option>JJF</option><option>JF</option><option>LP</option><option>RR</option><option>FT</option><option>RM</option></select></label>
+        <label>Hora de recepción<input type="time" name="receiptTime"></label>
+        <label>Recibido por<select name="receivedBy" required><option value="">Seleccione</option><option>ME</option><option>LP</option><option>NS</option><option>JF</option><option>KF</option></select></label>
+        <label>Temperatura almacenamiento<select name="storageTemperature" required><option value="&lt;10°C">&lt;10 °C</option><option value="1°C">1 °C</option><option value="2°C">2 °C</option><option value="3°C">3 °C</option><option value="4°C">4 °C</option><option value="5°C">5 °C</option><option value="6°C">6 °C</option><option value="7°C">7 °C</option><option value="8°C">8 °C</option><option value="9°C">9 °C</option><option value="10°C">10 °C</option></select></label>
+        <label class="span-2">Observaciones de recepción<textarea name="observations" rows="2"></textarea></label>
+        <div class="span-2 sample-form-actions"><button type="submit" id="sampleIntakeSubmitBtn">Guardar registro de muestra</button><button type="button" class="secondary" id="sampleIntakeCancelEdit" hidden>Cancelar edición</button><small id="sampleIntakeEditMode" class="hint"></small></div>
+      </form></div>
+
+      <div class="panel"><h3>Registro de muestras</h3><div class="table-wrap"><table class="sample-table"><thead><tr><th>Código</th><th>Tipo</th><th>Parámetros</th><th>Recepción</th><th>Ingreso oficial</th><th>Estado</th><th>Duplicado</th><th>Editar</th></tr></thead><tbody id="sampleIntakeTableBody"></tbody></table></div></div>
+
+      <div class="panel"><h3>2. Ingreso oficial de muestra</h3><p class="muted">Aquí se completa la programación y asignación. Empresa, sucursal y descripción quedan disponibles para reutilizarlas y este bloque también puede editarse posteriormente.</p><form id="sampleOfficialForm" class="sample-intake-grid"><input type="hidden" name="editId" value="">
+        <label class="span-2">Muestra pendiente<select name="sampleId" required></select></label>
+        <label>Fecha prevista de ensayo<input type="date" name="analysisDatePlanned" required></label>
+        <label>Hora prevista de ensayo<input type="time" name="analysisTimePlanned" required></label>
+        <label>Analista previsto<select name="analystPlanned" required></select></label>
+        <label>Nombre de la empresa<input name="company" list="sampleCompanyHistory" autocomplete="off" required><datalist id="sampleCompanyHistory"></datalist></label>
+        <label>Sucursal<input name="branch" list="sampleBranchHistory" autocomplete="off" required><datalist id="sampleBranchHistory"></datalist></label>
+        <label class="span-2">Descripción de la empresa / muestra<input name="description" list="sampleDescriptionHistory" autocomplete="off" required><datalist id="sampleDescriptionHistory"></datalist><small class="hint">Los valores guardados quedan disponibles para reutilizarlos en futuras muestras.</small></label>
+        <div class="span-2 sample-form-actions"><button type="submit" id="sampleOfficialSubmitBtn">Ingresar oficialmente y enviar a análisis</button><button type="button" class="secondary" id="sampleOfficialCancelEdit" hidden>Cancelar edición</button><small id="sampleOfficialEditMode" class="hint"></small></div>
+      </form></div>
+
+      <div class="panel"><h3>3. Análisis pendientes</h3><div class="table-wrap"><table><thead><tr><th>Código</th><th>Tipo</th><th>Empresa</th><th>Sucursal</th><th>Descripción</th><th>Fecha prevista</th><th>Origen</th><th>Acción</th></tr></thead><tbody id="sampleAnalysisTableBody"></tbody></table></div></div>
+
+      <div id="sampleAnalysisPanel" class="panel sample-analysis-panel" hidden><div class="sample-analysis-head"><div><h3>🧪 Registro de análisis · <span id="sampleAnalysisCode">—</span></h3><span id="sampleAnalysisOrigin">—</span></div><button type="button" class="secondary" id="closeSampleAnalysis">Cerrar</button></div>
+        <div id="sampleAnalysisContext" class="sample-flow-banner"></div>
+        <div id="sampleAnalysisLockState" class="sample-analysis-lock draft">🟡 BORRADOR · PENDIENTE DE CIERRE</div>
+        <div id="sampleAnalysisValidation" class="sample-analysis-validation"></div>
+        <form id="sampleAnalysisForm">
+          <div class="sample-condition-grid"><label>Fecha de análisis<input type="date" name="analysisDate" required></label><label>Temp. 35 °C<input type="number" step="0.1" name="temp35" required></label><label>Hora inicial 35 °C<input type="time" name="start35" required></label><label>Hora final 35 °C<input type="time" name="end35" required></label><label>Temp. 44,5 °C<input type="number" step="0.1" name="temp44" required></label><label>Hora inicial 44,5 °C<input type="time" name="start44" required></label><label>Hora final 44,5 °C<input type="time" name="end44" required></label></div>
+          <div id="sampleParameterResults" class="sample-parameter-results"></div>
+          <label>Observaciones<textarea name="notes" rows="2"></textarea></label><div class="sample-analysis-actions"><button id="sampleAnalysisSaveDraft" type="submit" class="secondary">💾 Guardar borrador</button><button id="sampleAnalysisFinalizeBtn" type="button" class="primary">🔒 Validar y finalizar análisis</button></div>
+        </form>
+      </div>
+
+      <div class="panel"><h3>3. Control de duplicados</h3><p class="muted">El PKI se evalúa independientemente por cada parámetro solicitado. Excelente &lt;0,15 · Aceptable 0,15–&lt;0,30 · Rechazado ≥0,30.</p><div class="table-wrap"><table><thead><tr><th>Original</th><th>Duplicado</th><th>Parámetro</th><th>V1 NMP</th><th>V2 NMP</th><th>PKI</th><th>Evaluación</th></tr></thead><tbody id="sampleDuplicateTableBody"></tbody></table></div></div>
+
+      <div class="panel sample-consolidated-panel"><div class="sample-consolidated-head"><div><h3>4. Consolidado de resultados + KPI</h3><p class="muted">Cada muestra puede generar resultados independientes de fecales, totales y E. coli sin repetir los datos de recepción.</p></div><div class="sample-export-actions"><button type="button" class="secondary sample-export-param" data-param="">⬇️ Excel completo · profesional</button><button type="button" class="secondary sample-export-param" data-param="Coliformes fecales">Fecales</button><button type="button" class="secondary sample-export-param" data-param="Coliformes totales">Totales</button><button type="button" class="secondary sample-export-param" data-param="E. coli">E. coli</button></div></div>
+        <div class="sample-filter-grid"><label>Mes<select id="sampleConsolidatedMonth"></select></label><label>Año<select id="sampleConsolidatedYear"></select></label><label>Tipo de muestra<select id="sampleConsolidatedType"><option value="">Todos</option><option>Agua residual</option><option>Agua natural</option><option>Agua de consumo</option><option>Suelo</option><option>Lodos</option></select></label><label>Empresa<select id="sampleConsolidatedCompany"><option value="">Todas</option></select></label><div class="sample-filter-actions"><button type="button" id="sampleConsolidatedApply">Aplicar</button><button type="button" class="secondary" id="sampleConsolidatedReset">Limpiar filtros</button></div></div>
+        <div class="sample-kpi-section">
+          <div class="sample-kpi-section-title"><b>Actividad del período</b><span>Resumen operativo de muestras y duplicados</span></div>
+          <div class="sample-dashboard-kpis">
+            <article class="kpi"><span>Originales</span><strong id="sampleDashOriginals">0</strong></article><article class="kpi"><span>Analizadas</span><strong id="sampleDashAnalyzed">0</strong></article><article class="kpi"><span>Pendientes</span><strong id="sampleDashPending">0</strong></article><article class="kpi"><span>Duplicados</span><strong id="sampleDashDuplicates">0</strong></article><article class="kpi"><span>Duplicados evaluados</span><strong id="sampleDashDupEvaluated">0</strong></article>
+          </div>
+        </div>
+        <div class="sample-kpi-section">
+          <div class="sample-kpi-section-title"><b>Indicadores de desempeño</b><span>Cumplimiento y comportamiento de resultados NMP</span></div>
+          <div class="sample-dashboard-kpis">
+            <article class="kpi"><span>Cumplimiento duplicados</span><strong id="sampleDashCompliance">—</strong></article><article class="kpi"><span>NMP &lt; 1,8</span><strong id="sampleDashUnder18">0</strong></article><article class="kpi"><span>NMP &gt; 200</span><strong id="sampleDashOver200">0</strong></article><article class="kpi"><span>Promedio NMP</span><strong id="sampleDashAverage">—</strong></article><article class="kpi"><span>Máximo NMP</span><strong id="sampleDashMax">—</strong></article>
+          </div>
+        </div>
+        <div class="sample-dashboard-grid"><div class="sample-dashboard-card"><b>Estado analítico</b><div id="sampleDashStatusBars"></div></div><div class="sample-dashboard-card"><b>Desempeño de duplicados</b><div id="sampleDashDuplicateBars"></div></div></div>
+        <div class="table-wrap"><table class="sample-consolidated-table"><thead><tr><th>Código</th><th>Origen</th><th>Tipo</th><th>Parámetro</th><th>Empresa</th><th>Sucursal</th><th>Descripción</th><th>Recepción</th><th>Fecha análisis</th><th>Analista</th><th>Esquema NMP</th><th>10 mL / positivos</th><th>1 mL</th><th>0,1 mL</th><th>NMP base</th><th>Factor</th><th>Resultado final</th><th>PKI / evaluación</th><th>Estado</th></tr></thead><tbody id="sampleConsolidatedTableBody"></tbody></table></div>
+      </div>
+    </section>
+
+    
+    <section id="view-products" class="view">
+      <div class="section-head"><div><h2>📦 Trazabilidad de productos de microbiología</h2><p>Recepción → Evaluación → Liberación/Cuarentena → Almacenamiento → Apertura → Uso → Cierre/Descarte.</p></div></div>
+      <div class="kpis product-kpis">
+        <article class="kpi"><span>Lotes activos</span><strong id="prodKpiActive">0</strong></article>
+        <article class="kpi"><span>Por vencer</span><strong id="prodKpiSoon">0</strong></article>
+        <article class="kpi"><span>Cuarentena</span><strong id="prodKpiQuarantine">0</strong></article>
+        <article class="kpi"><span>Vencidos</span><strong id="prodKpiExpired">0</strong></article>
+        <article class="kpi"><span>Stock crítico</span><strong id="prodKpiCritical">0</strong></article>
+        <article class="kpi"><span>Pendiente CoA</span><strong id="prodKpiCoa">0</strong></article>
+      </div>
+      <div class="tabs product-tabs">
+        <button class="tab product-tab active" data-product-tab="catalog">Catálogo maestro</button>
+        <button class="tab product-tab" data-product-tab="reception">Recepción de lote</button>
+        <button class="tab product-tab" data-product-tab="inventory">Inventario / Apertura</button>
+        <button class="tab product-tab" data-product-tab="usage">Uso y trazabilidad</button>
+        <button class="tab product-tab" data-product-tab="closure">Cierre / Descarte</button>
+        <button class="tab product-tab" data-product-tab="trace">Historial</button>
+      </div>
+
+      <div id="product-tab-catalog" class="product-tabpane active">
+        <div class="panel"><h3>Catálogo Maestro de Productos</h3>
+          <p class="muted">Las reglas técnicas se definen una sola vez. No se inventa vida útil postapertura: si no está documentada, el lote queda con revisión pendiente.</p>
+          <div class="notice"><b>A-1 medium (simple + concentrado)</b>: se administra como un solo producto comercial/lote deshidratado. El mismo frasco queda habilitado para preparar A-1 simple o A-1 concentrado; Preparación mantiene separados sus códigos, concentraciones y lotes preparados.</div>
+          <form id="productCatalogForm" class="form-grid">
+            <input type="hidden" name="id">
+            <label>Catálogo base<select id="productPresetSelect">
+              <option value="">Seleccione un producto o registre manualmente</option>
+              <optgroup label="Medios de cultivo">
+                <option value="MEDIUM:A1">A-1 medium (simple + concentrado)</option>
+                <option value="MEDIUM:AN">AN Agar nutrients</option>
+                <option value="MEDIUM:BHI">BHI</option>
+                <option value="MEDIUM:EMB">EMB</option>
+                <option value="MEDIUM:LMX">LMX Fluorocult</option>
+                <option value="MEDIUM:PCA">PCA</option>
+                <option value="MEDIUM:PDA">PDA</option>
+              </optgroup>
+              <optgroup label="Cepas de referencia">
+                <option value="STRAIN:ENT">Enterococcus faecalis</option>
+                <option value="STRAIN:EC">Escherichia coli</option>
+                <option value="STRAIN:KBL">Klebsiella pneumoniae</option>
+                <option value="STRAIN:SAL">Salmonella Typhimurium</option>
+              </optgroup>
+              <optgroup label="Consumibles">
+                <option value="CONSUMABLE:SWAB">Hisopos</option>
+                <option value="CONSUMABLE:PETRI">Caja Petri</option>
+                <option value="CONSUMABLE:ATTEST">Attest 3M</option>
+                <option value="CONSUMABLE:STERIKON">Sterikon Plus</option>
+              </optgroup>
+              <option value="MANUAL">Otro / registro manual</option>
+            </select><small>Catálogo asistido para evitar duplicados y mantener nombres estandarizados.</small></label>
+            <label>Producto / material<input name="name" required></label>
+            <label>Tipo<select name="type" required><option>Medio de cultivo deshidratado</option><option>Reactivo</option><option>Suplemento</option><option>Kit microbiológico</option><option>Material de referencia</option><option>Cepa de referencia</option><option>Consumible crítico</option><option>Hisopo</option><option>Caja Petri</option><option>Otro</option></select></label>
+            <label>Vincular con medio ERP<select name="erpMediumName" id="productErpMedium"><option value="">No aplica</option></select><small>Para medios deshidratados: alimenta Preparación automáticamente.</small></label>
+            <label>Vincular con cepa ERP<select name="erpStrainId" id="productErpStrain"><option value="">No aplica</option></select><small>Para cepas de referencia: actualiza lote y caducidad del catálogo de cepas.</small></label>
+            <label>Fabricante<select name="manufacturer" id="productManufacturerSelect">
+              <option value="">Seleccione</option>
+              <option value="TM MEDIA">TM MEDIA</option>
+              <option value="Merck">Merck</option>
+              <option value="Sigma Aldrich">Sigma Aldrich</option>
+              <option value="Hygicult">Hygicult</option>
+              <option value="NOKELAB">NOKELAB</option>
+              <option value="3M">3M</option>
+              <option value="__NEW__">➕ Nuevo fabricante...</option>
+            </select></label>
+            <label>Referencia / Catálogo<input name="catalogNumber"></label>
+            <label>Rango de temperatura<select name="storageCondition" id="productStorageSelect">
+              <option value="">Seleccione</option>
+              <option value="10 a 25 °C">10 a 25 °C</option>
+              <option value="-15 a -25 °C">-15 a -25 °C</option>
+              <option value="2 a 25 °C">2 a 25 °C</option>
+              <option value="2 a 30 °C">2 a 30 °C</option>
+              <option value="__NEW__">➕ Nuevo rango...</option>
+            </select></label>
+            <label>Vida útil postapertura (días)<input name="openShelfDays" type="number" min="15" max="720" step="1" placeholder="15–720; dejar vacío si no aplica"><small>Solo cuando exista respaldo del fabricante o procedimiento aprobado.</small></label>
+            <label>Stock mínimo<input name="minStock" type="number" min="0" step="0.01" value="0"></label>
+            <label>Unidad<select name="unit"><option>g</option><option>mL</option><option>unidad</option><option>frasco</option><option>kit</option><option>vial</option></select></label>
+            <label>Criticidad<select name="criticality"><option>ALTA</option><option>MEDIA</option><option>BAJA</option></select></label>
+            <label>Requiere CoA<select name="requiresCoa"><option value="SI">Sí</option><option value="NO">No</option></select></label>
+            <label>Requiere evaluación de desempeño<select name="requiresPerformance"><option value="AUTO">Según tipo/regla</option><option value="SI">Sí</option><option value="NO">No</option></select></label>
+            <label class="span-2">Criterios / referencia documental<textarea name="criteria" rows="2" placeholder="Especificación, ficha técnica, procedimiento interno..."></textarea></label>
+            <div class="form-actions span-2"><button class="primary" type="submit">Guardar producto</button><button type="button" id="productCatalogCancel">Cancelar edición</button></div>
+          </form>
+        </div>
+        <div class="panel"><h3>Productos configurados</h3><div class="table-wrap"><table><thead><tr><th>Producto</th><th>Tipo</th><th>Fabricante</th><th>Integración ERP</th><th>Almacenamiento</th><th>Postapertura</th><th>Stock mín.</th><th>Acción</th></tr></thead><tbody id="productCatalogRows"></tbody></table></div></div>
+      </div>
+
+      <div id="product-tab-reception" class="product-tabpane">
+        <div class="panel"><h3>Recepción y evaluación de nuevo lote</h3><p class="hint">El selector muestra únicamente productos pendientes de recepción. Un producto con lote vigente ya registrado en Inventario no vuelve a aparecer hasta que ese lote sea cerrado o rechazado.</p>
+          <form id="productLotForm" class="form-grid">
+            <input type="hidden" name="id">
+            <label>Producto<select name="productId" id="productLotProduct" required></select></label>
+            <label>Código interno<input id="productLotCodePreview" readonly placeholder="Automático al guardar"></label>
+            <label>Lote fabricante<input name="manufacturerLot" required></label>
+            <label>Proveedor<input name="supplier" required></label>
+            <label>Orden de compra / documento<input name="purchaseOrder"></label>
+            <label>Fecha recepción<input name="receivedDate" type="date" required></label>
+            <label>Fecha vencimiento fabricante<input name="manufacturerExpiry" type="date" required></label>
+            <label>Cantidad recibida<input name="quantityReceived" type="number" min="0" step="0.01" required></label>
+            <label>CoA<select name="coaStatus"><option value="RECIBIDO">Recibido / verificado</option><option value="PENDIENTE">Pendiente</option><option value="NO_APLICA">No aplica</option></select></label>
+            <label>Referencia CoA<input name="coaReference" placeholder="N.º / archivo / ubicación"></label>
+            <label>Envase / sello<select name="containerCondition"><option value="CONFORME">Conforme</option><option value="NO_CONFORME">No conforme</option></select></label>
+            <label>Etiqueta / identificación<select name="labelCondition"><option value="CONFORME">Conforme</option><option value="NO_CONFORME">No conforme</option></select></label>
+            <label>Condición/temperatura de recepción<input name="receptionCondition" placeholder="Ej. 22 °C / conforme"></label>
+            <label>Ubicación / equipo<input name="storageLocation" required placeholder="Gabinete, refrigerador, congelador..."></label>
+            <label>Revisado por<input name="reviewedBy" id="productReviewedBy" readonly></label>
+            <label class="span-2">Observaciones<textarea name="observations" rows="2"></textarea></label>
+            <div class="form-actions span-2"><button class="primary" type="submit">Evaluar y registrar lote</button><button type="button" id="productLotCancel">Cancelar edición</button></div>
+          </form>
+          <div class="notice">El estado se determina automáticamente: <b>APTO</b> solo cuando la recepción cumple y la documentación requerida está completa; de lo contrario queda en <b>CUARENTENA</b> o <b>RECHAZADO</b>.</div>
+        </div>
+      </div>
+
+      <div id="product-tab-inventory" class="product-tabpane">
+        <div class="panel"><h3>Inventario por lote</h3><div class="table-wrap"><table><thead><tr><th>Código</th><th>Producto</th><th>Lote</th><th>Estado</th><th>Disponible</th><th>Vence efectivo</th><th>Ubicación</th><th>Acciones</th></tr></thead><tbody id="productLotRows"></tbody></table></div></div>
+      </div>
+
+      <div id="product-tab-usage" class="product-tabpane">
+        <div class="panel"><h3>Registrar utilización</h3>
+          <form id="productUsageForm" class="form-grid">
+            <label>Lote disponible<select name="lotId" id="productUsageLot" required></select></label>
+            <label>Cantidad utilizada<input name="quantity" type="number" min="0.0001" step="0.0001" required></label>
+            <label>Destino / módulo<select name="destinationType"><option>Preparación de medio</option><option>Control de calidad</option><option>Prueba de rendimiento</option><option>Análisis de muestra</option><option>Reactivación de cepa</option><option>Control microbiológico</option><option>Otro</option></select></label>
+            <label>Referencia / código relacionado<input name="reference" required placeholder="Ej. lote preparado, muestra, control..."></label>
+            <label>Responsable<input name="responsible" id="productUsageResponsible" readonly></label>
+            <label>Fecha<input name="usageDate" type="date" required></label>
+            <label class="span-2">Observación<textarea name="notes" rows="2"></textarea></label>
+            <div class="form-actions span-2"><button class="primary" type="submit">Registrar uso</button></div>
+          </form>
+        </div>
+        <div class="panel"><h3>Últimos usos</h3><div class="table-wrap"><table><thead><tr><th>Fecha</th><th>Producto / lote</th><th>Cantidad</th><th>Destino</th><th>Referencia</th><th>Responsable</th></tr></thead><tbody id="productUsageRows"></tbody></table></div></div>
+      </div>
+
+      <div id="product-tab-closure" class="product-tabpane">
+        <div class="panel"><h3>Cierre / descarte controlado</h3>
+          <form id="productClosureForm" class="form-grid">
+            <label>Lote<select name="lotId" id="productClosureLot" required></select></label>
+            <label>Motivo<select name="reason"><option>AGOTADO</option><option>VENCIDO</option><option>DAÑO / DETERIORO</option><option>NO CONFORMIDAD</option><option>RETIRO / RECALL</option><option>OTRO</option></select></label>
+            <label>Fecha<input name="closureDate" type="date" required></label>
+            <label>Cantidad descartada<input name="discardedQuantity" type="number" min="0" step="0.01"></label>
+            <label>Método / disposición<input name="disposalMethod" required></label>
+            <label>Responsable<input name="responsible" id="productClosureResponsible" readonly></label>
+            <label class="span-2">Justificación / observación<textarea name="notes" rows="2" required></textarea></label>
+            <div class="form-actions span-2"><button class="danger" type="submit">Cerrar lote definitivamente</button></div>
+          </form>
+        </div>
+      </div>
+
+      <div id="product-tab-trace" class="product-tabpane">
+        <div class="panel"><div class="section-head"><div><h3>Historial inmutable</h3><p>Recepciones, evaluaciones, aperturas, usos, cambios de estado y cierres.</p></div><button id="productExportBtn">⬇️ Exportar CSV</button></div>
+          <div class="table-wrap"><table><thead><tr><th>Fecha/hora</th><th>Producto / lote</th><th>Acción</th><th>Usuario</th><th>Detalle</th></tr></thead><tbody id="productTraceRows"></tbody></table></div>
+        </div>
+      </div>
+    </section>
+
+
+    <section id="view-equipment" class="view">
+      <div class="section-head">
+        <div><h2>♨️ Control de equipos y áreas</h2><p>Control operativo, limpieza, controles biológicos y trazabilidad de equipos críticos.</p></div>
+      </div>
+
+      <div class="kpis equipment-kpis">
+        <article class="kpi"><span>Equipos activos</span><strong id="eqKpiActive">2</strong></article>
+        <article class="kpi"><span>Attest próximo</span><strong id="eqKpiAttestSoon">0</strong></article>
+        <article class="kpi"><span>Sterikon próximo</span><strong id="eqKpiSterikonSoon">0</strong></article>
+        <article class="kpi"><span>Controles vencidos</span><strong id="eqKpiOverdue">0</strong></article>
+        <article class="kpi"><span>Limpiezas pendientes</span><strong id="eqKpiCleaning">0</strong></article>
+      </div>
+
+      <div class="tabs equipment-tabs">
+        <button class="tab equipment-tab active" data-equipment-tab="dashboard">Resumen</button>
+        <button class="tab equipment-tab" data-equipment-tab="autoclaves">Autoclaves</button>
+        <button class="tab equipment-tab" data-equipment-tab="cleaning">Limpieza</button>
+        <button class="tab equipment-tab" data-equipment-tab="environment">🌡️ Control de condiciones</button>
+        <button class="tab equipment-tab" data-equipment-tab="controlcharts">📈 Carta de control</button>
+        <button class="tab equipment-tab" data-equipment-tab="catalog">Catálogo de equipos</button>
+        <button class="tab equipment-tab" data-equipment-tab="history">Historial</button>
+      </div>
+
+      <div id="equipment-tab-dashboard" class="equipment-tabpane active">
+        <div class="panel">
+          <h3>Estado de equipos críticos</h3>
+          <div id="equipmentStatusCards" class="equipment-status-grid"></div>
+        </div>
+        <div class="panel">
+          <h3>Próximas acciones</h3>
+          <div class="table-wrap"><table><thead><tr><th>Equipo</th><th>Control</th><th>Estado</th><th>Referencia</th><th>Acción</th></tr></thead><tbody id="equipmentUpcomingRows"></tbody></table></div>
+        </div>
+      </div>
+
+      <div id="equipment-tab-autoclaves" class="equipment-tabpane">
+        <div class="panel">
+          <h3>Registrar ciclo de autoclave</h3>
+          <p class="muted">La frecuencia de Attest se controla por número de cargas. Sterikon Plus se controla por tiempo. El sistema calcula ambos estados automáticamente.</p>
+          <form id="autoclaveControlForm" class="form-grid">
+            <label>Autoclave<select name="equipmentId" id="autoclaveEquipmentSelect" required></select></label>
+            <label>Fecha<input type="date" name="date" required></label>
+            <label>Tipo de ciclo<select name="cycleType" id="autoclaveCycleType" required></select></label>
+            <label>N.º de cargas del registro<input type="number" name="loads" min="1" step="1" value="1" required></label>
+            <label>Temperatura alcanzada (°C)<input type="number" name="temperature" step="0.1" value="121" required></label>
+            <label>Tiempo de ciclo (min)<input type="number" name="cycleMinutes" min="1" step="1" value="15" required></label>
+            <label>Hora de inicio<input type="time" name="startTime"></label>
+            <label>Hora de fin<input type="time" name="endTime"></label>
+            <div id="autoclaveLoadCounter" class="field-summary"><b>Contador Attest</b><span>Seleccione el autoclave para ver cargas acumuladas y restantes.</span></div>
+            <label>Cinta indicadora<select name="indicatorTape" required><option value="">Seleccione</option><option value="CUMPLE">CUMPLE</option><option value="NO_CUMPLE">NO CUMPLE</option></select></label>
+            <label>Attest 3M<select name="attestPerformed"><option value="NO">No corresponde / no realizado</option><option value="SI">Sí, realizado</option></select></label>
+            <label>Lote Attest 3M<select name="attestLotId" id="attestLotSelect">
+              <option value="">Seleccione lote vigente de Trazabilidad</option>
+            </select><small id="attestLotHelp">Se muestran únicamente lotes APTO, vigentes y con stock.</small></label>
+            <label>Resultado Attest<select name="attestResult"><option value="">No aplica</option><option value="NEGATIVO">NEGATIVO / CUMPLE</option><option value="POSITIVO">POSITIVO / NO CUMPLE</option></select></label>
+            <label>Sterikon Plus<select name="sterikonPerformed"><option value="NO">No corresponde / no realizado</option><option value="SI">Sí, realizado</option></select></label>
+            <label>Lote Sterikon Plus<select name="sterikonLotId" id="sterikonLotSelect">
+              <option value="">Seleccione lote vigente de Trazabilidad</option>
+            </select><small id="sterikonLotHelp">Se muestran únicamente lotes APTO, vigentes y con stock.</small></label>
+            <label>Resultado Sterikon<select name="sterikonResult"><option value="">No aplica</option><option value="CUMPLE">CUMPLE</option><option value="NO_CUMPLE">NO CUMPLE</option></select></label>
+            <label>Analista<input name="analyst" id="autoclaveAnalyst" readonly></label>
+            <label class="span-2">Observaciones<textarea name="notes" rows="2"></textarea></label>
+            <div id="autoclaveControlPreview" class="wide state-card state-pending"><strong>PENDIENTE</strong><span>Complete los datos del ciclo.</span></div>
+            <div class="form-actions span-2"><button class="primary" type="submit">Guardar control de autoclave</button></div>
+          </form>
+        </div>
+        <div class="panel">
+          <h3>Últimos controles</h3>
+          <div class="table-wrap"><table><thead><tr><th>Fecha</th><th>Equipo</th><th>Ciclo</th><th>Inicio–Fin</th><th>Cargas</th><th>Contador Attest</th><th>Temp.</th><th>Attest</th><th>Sterikon</th><th>Resultado</th><th>Analista</th></tr></thead><tbody id="autoclaveControlRows"></tbody></table></div>
+        </div>
+      </div>
+
+      <div id="equipment-tab-cleaning" class="equipment-tabpane">
+        <div class="panel">
+          <h3>🧹 Plan Maestro Inteligente de Limpieza y Desinfección</h3>
+          <p class="muted">Programación automática basada en PG0418, PG0419, PG0420 y PG0422. Se conserva responsable, verificación, agente, próxima fecha y trazabilidad.</p>
+          <div class="kpi-grid">
+            <article class="kpi"><span>Actividades programadas</span><strong id="cleanKpiTotal">0</strong></article>
+            <article class="kpi"><span>Pendientes / vencidas</span><strong id="cleanKpiPending">0</strong></article>
+            <article class="kpi"><span>Próximas</span><strong id="cleanKpiUpcoming">0</strong></article>
+            <article class="kpi"><span>Al día</span><strong id="cleanKpiOk">0</strong></article>
+          </div>
+          <section class="cleaning-priority-panel" aria-label="Prioridades de limpieza">
+            <div class="section-head">
+              <div><h4>🚦 Prioridades de limpieza</h4><p>Primero se muestran las actividades vencidas, las que vencen hoy y las que están en alerta final.</p></div>
+              <span class="pill warn" id="cleanPriorityCount">0 PRIORIDADES</span>
+            </div>
+            <div id="cleaningPriorityCards" class="cleaning-priority-grid"></div>
+          </section>
+          <div class="control-chart-selector" style="margin-top:14px">
+            <button type="button" class="cleaning-subtab active" data-cleaning-subtab="plan">📋 Plan de limpieza</button>
+            <button type="button" class="cleaning-subtab" data-cleaning-subtab="areas">🧹 Áreas</button>
+            <button type="button" class="cleaning-subtab" data-cleaning-subtab="equipment">🧪 Equipos</button>
+            <button type="button" class="cleaning-subtab" data-cleaning-subtab="history">📜 Historial</button>
+          </div>
+          <div id="cleaning-pane-plan" class="cleaning-pane"><div class="table-wrap"><table><thead><tr><th>Elemento</th><th>Tipo</th><th>Frecuencia</th><th>Registro</th><th>Última</th><th>Próxima / regla</th><th>Estado</th><th>Acción</th></tr></thead><tbody id="cleaningPlanRows"></tbody></table></div></div>
+          <div id="cleaning-pane-areas" class="cleaning-pane" hidden>
+            <div class="area-cleaning-layout">
+              <section class="area-cleaning-card">
+                <div class="section-head">
+                  <div>
+                    <h4>🧹 Limpieza diaria de áreas · Microbiología</h4>
+                    <p>Registro rápido por checklist. El responsable se toma del usuario activo y la fecha/hora quedan trazadas automáticamente.</p>
+                  </div>
+                </div>
+                <form id="areaCleaningQuickForm" class="form-grid">
+                  <label>Fecha<input type="date" name="date" required></label>
+                  <label>Responsable<input name="responsible" readonly></label>
+
+                  <fieldset class="span-2 checklist-box">
+                    <legend>Momento de limpieza</legend>
+                    <label class="check-row"><input type="checkbox" name="shiftStart"> Inicio de jornada</label>
+                    <label class="check-row"><input type="checkbox" name="shiftEnd"> Final de jornada</label>
+                  </fieldset>
+
+                  <div class="span-2 weekly-product-card">
+                    <div>
+                      <span>Producto asignado automáticamente esta semana</span>
+                      <strong id="areaWeeklyProduct">—</strong>
+                      <small id="areaWeeklyProductWeek">La asignación queda fija durante toda la semana y se guarda en la trazabilidad.</small>
+                    </div>
+                    <span class="pill ok">AUTOMÁTICO</span>
+                  </div>
+
+                  <fieldset class="span-2 checklist-box">
+                    <legend>Área intervenida</legend>
+                    <label class="check-row"><input type="checkbox" name="surface"> Superficies</label>
+                    <label class="check-row"><input type="checkbox" name="floor"> Pisos</label>
+                  </fieldset>
+
+                  <label class="span-2">Observaciones<textarea name="notes" rows="2" placeholder="Opcional"></textarea></label>
+
+                  <div id="areaCleaningQuickStatus" class="span-2 notice">
+                    Seleccione al menos un momento de limpieza, un producto y un área.
+                  </div>
+
+                  <div class="form-actions span-2">
+                    <button class="primary" type="submit">Guardar limpieza de área</button>
+                    <button type="button" id="areaCleaningQuickClear">Limpiar selección</button>
+                  </div>
+                </form>
+              </section>
+
+              <section class="area-cleaning-card">
+                <h4>Estado del mes</h4>
+                <div class="kpi-grid area-cleaning-kpis">
+                  <article class="kpi"><span>Días laborables</span><strong id="areaCleanKpiScheduled">0</strong></article>
+                  <article class="kpi"><span>Completos</span><strong id="areaCleanKpiComplete">0</strong></article>
+                  <article class="kpi"><span>Pendientes</span><strong id="areaCleanKpiPending">0</strong></article>
+                  <article class="kpi"><span>Cumplimiento</span><strong id="areaCleanKpiCompliance">—</strong></article>
+                </div>
+                <div class="table-wrap">
+                  <table>
+                    <thead><tr><th>Fecha</th><th>Día</th><th>Inicio</th><th>Final</th><th>Productos</th><th>Superficies</th><th>Pisos</th><th>Responsable</th><th>Acción</th></tr></thead>
+                    <tbody id="areaCleaningMonthlyRows"></tbody>
+                  </table>
+                </div>
+              </section>
+            </div>
+          </div>
+          <div id="cleaning-pane-equipment" class="cleaning-pane" hidden><div id="cleaningEquipmentCards" class="equipment-status-grid"></div></div>
+          <div id="cleaning-pane-history" class="cleaning-pane" hidden><div class="table-wrap"><table><thead><tr><th>Fecha</th><th>Elemento</th><th>Detalle</th><th>Tipo</th><th>Agente</th><th>Realizado</th><th>Verificado</th></tr></thead><tbody id="equipmentCleaningRowsMaster"></tbody></table></div></div>
+        </div>
+        <div class="panel">
+          <h3>Registrar limpieza / desinfección</h3>
+          <div class="notice" style="margin-bottom:12px">
+            <b>Frecuencia inteligente:</b> las limpiezas extraordinarias por derrame, contaminación visible o evento no reinician la fecha de la limpieza rutinaria programada.
+            La cabina de flujo laminar se registra al inicio y al final de jornada; el cierre se habilita como mínimo 3 horas después del inicio.
+          </div>
+          <form id="equipmentCleaningForm" class="form-grid">
+            <label>Elemento<select name="equipmentId" id="cleaningEquipmentSelect" required></select></label>
+            <label>Fecha<input type="date" name="date" required></label>
+            <label>Tipo de limpieza<select name="cleaningType">
+              <option value="RUTINARIA">Rutinaria / programada</option>
+              <option value="PROFUNDA">Profunda</option>
+              <option value="EXTRAORDINARIA_DERRAME">Extraordinaria · Derrame</option>
+              <option value="EXTRAORDINARIA_CONTAMINACION">Extraordinaria · Contaminación visible</option>
+              <option value="EXTRAORDINARIA_EVENTO">Extraordinaria · Evento que compromete el ensayo</option>
+              <option value="OTRA">Otra</option>
+            </select></label>
+            <label>Producto / agente utilizado<input name="agent" id="cleaningWeeklyAgent" readonly required><small id="cleaningWeeklyAgentWeek" class="hint">Asignado automáticamente según la semana de la fecha seleccionada.</small></label>
+            <label>Realizado por<input name="performedBy" id="cleaningPerformedBy" readonly></label>
+            <label>Verificado por<select name="verifiedBy" id="cleaningVerifiedBy" required></select></label>
+            <div id="laminarCleaningFields" class="span-2 laminar-cleaning-box" hidden>
+              <div class="laminar-cleaning-title"><strong>Cabina de flujo laminar · PG0422</strong><span>Registro guiado y automático</span></div>
+              <div class="form-grid laminar-cleaning-grid">
+                <label>Momento del registro
+                  <input type="hidden" name="laminarMoment" id="laminarCleaningMoment" value="INICIO_JORNADA">
+                  <input id="laminarCleaningMomentDisplay" value="Inicio de jornada / antes del uso" readonly>
+                  <small id="laminarCleaningMomentHint" class="hint">El sistema muestra únicamente el paso pendiente de la jornada.</small>
+                </label>
+                <label>Hora<input type="time" name="laminarTime" id="laminarCleaningTime" readonly></label>
+                <label>Agente específico<input id="laminarCleaningAgent" value="Alcohol 70 %" readonly><small class="hint">Fijo para la cabina según EI/LAB-PSI/17.</small></label>
+                <label>Exposición lámpara UV<input type="number" name="uvMinutes" id="laminarUvMinutes" value="15" readonly><small class="hint">15 minutos según el instructivo interno vigente.</small></label>
+                <label>UV ejecutada<select name="uvApplied" id="laminarUvApplied"><option value="SI">Sí</option><option value="NO">No</option></select></label>
+                <div class="laminar-auto-note" id="laminarAutoNote">El sistema registra automáticamente fecha, hora, usuario, Alcohol 70 % y 15 min de UV. Al guardar el inicio, el formulario se cierra. El registro final se habilita automáticamente cuando hayan transcurrido al menos 3 horas; al volver a abrir la cabina solo aparecerá el paso pendiente.</div>
+              </div>
+            </div>
+            <label class="span-2">Observaciones<textarea name="notes" rows="2"></textarea></label>
+            <div class="form-actions span-2"><button class="primary" type="submit">Guardar limpieza</button></div>
+          </form>
+        </div>
+        <div class="panel"><h3>Historial de limpieza</h3><div class="table-wrap"><table><thead><tr><th>Fecha</th><th>Elemento</th><th>Detalle</th><th>Tipo</th><th>Agente</th><th>Realizado</th><th>Verificado</th></tr></thead><tbody id="equipmentCleaningRows"></tbody></table></div></div>
+      </div>
+
+      <div id="equipment-tab-environment" class="equipment-tabpane">
+        <div id="conditionsHub" class="panel control-chart-hub">
+          <div class="section-head"><div><h3>🌡️ Control de condiciones</h3><p>Controles diarios separados, con criterios, correcciones, trazabilidad y tendencia propios.</p></div></div>
+          <div class="control-chart-selector"><button type="button" class="condition-subtab active" data-condition="ambient" aria-selected="true">🌤️ Condiciones ambientales</button><button type="button" class="condition-subtab" data-condition="refrigerator" aria-selected="false">❄️ Nevera EI-61</button><button type="button" class="condition-subtab" data-condition="refrigerator2" aria-selected="false">🌡️ Nevera 2 · EI-344</button><button type="button" class="condition-subtab" disabled>＋ Próximo control</button></div>
+        </div>
+        <div id="condition-ambient" class="condition-subpane active">
+        <div class="panel">
+          <div class="section-head">
+            <div><h3>Condiciones ambientales · Área de Microbiología</h3><p>Registro diario obligatorio de lunes a viernes. Sábados, domingos y feriados quedan fuera de programación automáticamente.</p></div>
+          </div>
+
+          <div class="kpis environment-kpis">
+            <article class="kpi"><span>Estado de hoy</span><strong id="envKpiToday">—</strong></article>
+            <article class="kpi"><span>Pendientes del mes</span><strong id="envKpiPending">0</strong></article>
+            <article class="kpi"><span>Registrados del mes</span><strong id="envKpiRecorded">0</strong></article>
+            <article class="kpi"><span>Fuera de criterio</span><strong id="envKpiLimited">0</strong></article>
+          </div>
+
+          <div id="environmentTodayCard" class="notice"></div>
+          <div class="notice"><b>Criterios de aceptación del formato PSI-MC1602-07:</b> Temperatura 15 a 25 °C · Humedad relativa &lt;80 %. Código del termohigrómetro de referencia: <b>EI/347</b>.</div>
+
+          <form id="environmentForm" class="form-grid">
+            <input type="hidden" name="id">
+            <label>Fecha<input name="date" type="date" required></label>
+            <label>Hora<input name="time" type="time" required></label>
+            <label>Área<input name="area" value="Microbiología" readonly></label>
+            <label>Registrado por<input name="analyst" id="environmentAnalyst" readonly></label>
+            <label>Temperatura leída (°C)<input name="temperatureRaw" type="number" step="0.1" required></label>
+            <label>Humedad relativa leída (%)<input name="humidityRaw" type="number" min="0" max="100" step="0.1" required></label>
+            <label>Temperatura corregida (°C)<input name="temperatureCorrected" readonly></label>
+            <label>Humedad corregida (%)<input name="humidityCorrected" readonly></label>
+            <label>Resultado automático<input name="compliance" readonly></label>
+            <label>Criterio vigente<input id="environmentAcceptanceDisplay" readonly value="Temperatura 15–25 °C · Humedad <80 %"></label>
+            <div class="span-2 environment-correction-card">
+              <div><b>Limitación / corrección vigente del termohigrómetro</b><small id="environmentCorrectionDisplay">Cargando regla...</small></div>
+              <button type="button" id="environmentEditCorrection">🔒 Modificar limitación (FT)</button>
+            </div>
+            <label class="span-2">Observaciones<textarea name="notes" rows="2"></textarea></label>
+            <div class="form-actions span-2"><button class="primary" type="submit">Guardar condiciones ambientales</button><button type="button" id="environmentCancel">Cancelar edición</button></div>
+          </form>
+        </div>
+
+        <div class="panel">
+          <div class="section-head"><div><h3>Control diario del mes</h3><p>El sistema identifica automáticamente días laborables, feriados, registrados y pendientes.</p></div></div>
+          <div class="table-wrap"><table><thead><tr><th>Fecha</th><th>Día</th><th>Programación</th><th>Estado</th><th>Temp. leída</th><th>Temp. corregida</th><th>HR leída</th><th>HR corregida</th><th>Cumplimiento</th><th>Acción</th></tr></thead><tbody id="environmentCalendarRows"></tbody></table></div>
+        </div>
+
+        <div class="panel">
+          <div class="section-head"><div><h3>Calendario de feriados</h3><p>Agregue únicamente los feriados que deben excluirse del registro ambiental. Puede modificarlos por año sin cambiar el motor.</p></div></div>
+          <form id="holidayForm" class="form-grid">
+            <label>Fecha feriado<input name="date" type="date" required></label>
+            <label>Descripción<input name="name" required placeholder="Ej. Feriado nacional / local"></label>
+            <div class="form-actions"><button class="primary" type="submit">➕ Agregar feriado</button></div>
+          </form>
+          <div class="table-wrap"><table><thead><tr><th>Fecha</th><th>Feriado</th><th>Acción</th></tr></thead><tbody id="holidayRows"></tbody></table></div>
+        </div>
+
+        <div class="panel">
+          <div class="section-head"><div><h3>Historial y trazabilidad</h3><p>Cada creación o corrección queda registrada con usuario, fecha/hora y cambio realizado.</p></div><button id="environmentExportBtn">⬇️ Exportar CSV</button></div>
+          <div class="table-wrap"><table><thead><tr><th>Fecha/hora evento</th><th>Fecha control</th><th>Evento</th><th>Usuario</th><th>Detalle</th></tr></thead><tbody id="environmentTraceRows"></tbody></table></div>
+        </div>
+      </div>
+
+        <div id="condition-refrigerator" class="condition-subpane">
+          <div class="panel">
+            <div class="section-head"><div><h3>❄️ Condición de Nevera EI-61</h3><p>Control de almacenamiento de agares y caldos preparados. Rango de aceptación: <b>2 a 8 °C</b>. Programación de lunes a viernes, excluyendo feriados.</p></div></div>
+            <div class="kpis environment-kpis"><article class="kpi"><span>Estado de hoy</span><strong id="fridgeKpiToday">—</strong></article><article class="kpi"><span>Pendientes del mes</span><strong id="fridgeKpiPending">0</strong></article><article class="kpi"><span>Registrados del mes</span><strong id="fridgeKpiRecorded">0</strong></article><article class="kpi"><span>Fuera de rango</span><strong id="fridgeKpiOutside">0</strong></article></div>
+            <form id="refrigeratorForm" class="form-grid"><input type="hidden" name="id"><label>Fecha<input name="date" type="date" required></label><label>Hora<input name="time" type="time" required></label><label>Equipo<input value="Nevera EI-61" readonly></label><label>Registrado por<input name="analyst" readonly></label><label>Temperatura leída (°C)<input name="temperatureRaw" type="number" step="0.1" required></label><label>Temperatura corregida (°C)<input name="temperatureCorrected" readonly></label><label>Resultado automático<input name="result" readonly></label><label>Criterio vigente<input id="refrigeratorCriterion" readonly></label><div class="span-2 environment-correction-card"><div><b>Limitación / corrección vigente</b><small id="refrigeratorCorrectionDisplay"></small></div><button type="button" id="refrigeratorEditCorrection">🔒 Modificar limitación (FT)</button></div><label class="span-2">Observaciones<textarea name="notes" rows="2"></textarea></label><div class="form-actions span-2"><button class="primary" type="submit">Guardar condición de Nevera EI-61</button><button type="button" id="refrigeratorCancel">Cancelar edición</button></div></form>
+          </div>
+          <div class="panel"><div class="section-head"><div><h3>📈 Tendencia mensual · Nevera EI-61</h3><p>Temperatura corregida frente a los límites de aceptación 2–8 °C.</p></div></div><div class="incubator-chart-wrap"><svg id="refrigeratorTrendChart" class="incubator-chart" viewBox="0 0 1100 330" role="img" aria-label="Tendencia mensual Nevera EI-61"></svg></div></div>
+          <div class="panel"><h3>Control diario del mes</h3><div class="table-wrap"><table><thead><tr><th>Fecha</th><th>Día</th><th>Programación</th><th>Estado</th><th>Temp. leída</th><th>Temp. corregida</th><th>Responsable</th><th>Acción</th></tr></thead><tbody id="refrigeratorCalendarRows"></tbody></table></div></div>
+          <div class="panel"><div class="section-head"><div><h3>Historial y trazabilidad</h3><p>Registros y cambios de corrección quedan identificados por usuario y fecha/hora.</p></div><button id="refrigeratorExportBtn">⬇️ Exportar CSV</button></div><div class="table-wrap"><table><thead><tr><th>Fecha/hora evento</th><th>Fecha control</th><th>Evento</th><th>Usuario</th><th>Detalle</th></tr></thead><tbody id="refrigeratorTraceRows"></tbody></table></div></div>
+
+        </div>
+
+        <div id="condition-refrigerator2" class="condition-subpane">
+          <div class="panel">
+            <div class="section-head">
+              <div>
+                <h3>🌡️ Condición de Nevera 2 · EI-344</h3>
+                <p>Control independiente de almacenamiento. Rango inicial de aceptación: <b>10 a 25 °C</b>. Programación de lunes a viernes, excluyendo feriados.</p>
+              </div>
+            </div>
+            <div class="kpis environment-kpis">
+              <article class="kpi"><span>Estado de hoy</span><strong id="fridge2KpiToday">—</strong></article>
+              <article class="kpi"><span>Pendientes del mes</span><strong id="fridge2KpiPending">0</strong></article>
+              <article class="kpi"><span>Registrados del mes</span><strong id="fridge2KpiRecorded">0</strong></article>
+              <article class="kpi"><span>Fuera de rango</span><strong id="fridge2KpiOutside">0</strong></article>
+            </div>
+
+            <form id="refrigerator2Form" class="form-grid">
+              <input type="hidden" name="id">
+              <label>Fecha<input name="date" type="date" required></label>
+              <label>Hora<input name="time" type="time" required></label>
+              <label>Equipo<input id="refrigerator2EquipmentDisplay" readonly></label>
+              <label>Registrado por<input name="analyst" readonly></label>
+              <label>Temperatura leída (°C)<input name="temperatureRaw" type="number" step="0.1" required></label>
+              <label>Temperatura corregida (°C)<input name="temperatureCorrected" readonly></label>
+              <label>Resultado automático<input name="result" readonly></label>
+              <label>Criterio vigente<input id="refrigerator2Criterion" readonly></label>
+              <div class="span-2 environment-correction-card">
+                <div>
+                  <b>Limitación / rango / corrección vigente</b>
+                  <small id="refrigerator2CorrectionDisplay"></small>
+                </div>
+                <button type="button" id="refrigerator2EditConfig">🔒 Modificar configuración (FT)</button>
+              </div>
+              <label class="span-2">Observaciones<textarea name="notes" rows="2"></textarea></label>
+              <div class="form-actions span-2">
+                <button class="primary" type="submit">Guardar condición de Nevera 2</button>
+                <button type="button" id="refrigerator2Cancel">Cancelar edición</button>
+              </div>
+            </form>
+          </div>
+
+          <div class="panel">
+            <div class="section-head"><div><h3>📈 Tendencia mensual · Nevera 2</h3><p>Temperatura corregida frente a los límites configurados.</p></div></div>
+            <div class="incubator-chart-wrap"><svg id="refrigerator2TrendChart" class="incubator-chart" viewBox="0 0 1100 330" role="img" aria-label="Tendencia mensual Nevera 2"></svg></div>
+          </div>
+
+          <div class="panel">
+            <h3>Control diario del mes</h3>
+            <div class="table-wrap"><table><thead><tr><th>Fecha</th><th>Día</th><th>Programación</th><th>Estado</th><th>Temp. leída</th><th>Temp. corregida</th><th>Responsable</th><th>Acción</th></tr></thead><tbody id="refrigerator2CalendarRows"></tbody></table></div>
+          </div>
+
+          <div class="panel">
+            <div class="section-head"><div><h3>Historial y trazabilidad</h3><p>Registros y cambios de código, rango o corrección quedan identificados por usuario y fecha/hora.</p></div><button id="refrigerator2ExportBtn">⬇️ Exportar CSV</button></div>
+            <div class="table-wrap"><table><thead><tr><th>Fecha/hora evento</th><th>Fecha control</th><th>Evento</th><th>Usuario</th><th>Detalle</th></tr></thead><tbody id="refrigerator2TraceRows"></tbody></table></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="equipment-tab-controlcharts" class="equipment-tabpane">
+        <div class="panel control-chart-hub">
+          <div class="section-head">
+            <div>
+              <h3>📈 Cartas de control</h3>
+              <p>Seleccione el equipo. Cada carta conserva sus propios registros, límites, verificaciones y trazabilidad.</p>
+            </div>
+          </div>
+          <div class="control-chart-selector">
+            <button class="control-chart-tab active" data-control-chart="incubator">🌡️ Incubadora</button>
+            <button class="control-chart-tab" data-control-chart="waterbath">💧 Baño de María</button>
+            <button class="control-chart-tab" data-control-chart="phmeter">🧪 pHmetro</button>
+            <button class="control-chart-tab control-chart-future" disabled>＋ Próximo equipo</button>
+          </div>
+        </div>
+<div id="equipment-tab-incubator" class="control-chart-pane active">
+        <div class="panel">
+          <div class="section-head">
+            <div><h3>📈 Carta de Control · Incubadora de Microbiología</h3><p>Seguimiento mensual de temperatura con línea central y límites de control.</p></div>
+            <div class="inline-actions"><label>Mes<input id="incubatorMonth" type="month"></label><button id="incubatorExportBtn">⬇️ Exportar CSV</button></div>
+          </div>
+
+          <div class="kpis incubator-kpis">
+            <article class="kpi"><span>Estado de hoy</span><strong id="incKpiToday">—</strong></article>
+            <article class="kpi"><span>Promedio del mes</span><strong id="incKpiAverage">—</strong></article>
+            <article class="kpi"><span>Mínimo</span><strong id="incKpiMin">—</strong></article>
+            <article class="kpi"><span>Máximo</span><strong id="incKpiMax">—</strong></article>
+            <article class="kpi"><span>Fuera de control</span><strong id="incKpiOut">0</strong></article>
+          </div>
+
+          <div class="incubator-reference-card">
+            <div><b id="incubatorEquipmentTitle">Incubadora de Microbiología · EI/365</b><small id="incubatorCriteriaText">Objetivo 35,0 °C · Límites 34,5–35,5 °C</small></div>
+            <button type="button" id="incubatorEditConfig">⚙️ Configurar</button>
+          </div>
+
+          <div class="incubator-chart-wrap">
+            <svg id="incubatorChart" class="incubator-chart" viewBox="0 0 1100 360" role="img" aria-label="Carta de control mensual de incubadora"></svg>
+          </div>
+          <div class="chart-legend">
+            <span><i class="legend-line data"></i>Temperatura registrada</span>
+            <span><i class="legend-line center"></i>35,0 °C</span>
+            <span><i class="legend-line limit"></i>Límites 34,5 / 35,5 °C</span>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h3>Registro diario de temperatura</h3>
+          <form id="incubatorReadingForm" class="form-grid">
+            <input type="hidden" name="id">
+            <label>Fecha<input name="date" type="date" required></label>
+            <label>Hora<input name="time" type="time" required></label>
+            <label>Código equipo<input name="equipmentCode" value="EI/365" readonly></label>
+            <label>Temperatura observada (°C)<input name="temperature" type="number" step="0.1" required></label>
+            <label>Resultado<input name="result" readonly></label>
+            <label>Registrado por<input name="analyst" readonly></label>
+            <label class="span-2">Observaciones<textarea name="notes" rows="2"></textarea></label>
+            <div id="incubatorReadingPreview" class="span-2 state-card state-pending"><strong>PENDIENTE</strong><span>Ingrese la temperatura.</span></div>
+            <div class="form-actions span-2"><button class="primary" type="submit">Guardar temperatura</button><button type="button" id="incubatorReadingCancel">Cancelar edición</button></div>
+          </form>
+        </div>
+
+        <div class="panel">
+          <h3>Control mensual</h3>
+          <div class="table-wrap"><table><thead><tr><th>Fecha</th><th>Día</th><th>Hora</th><th>Temperatura</th><th>Resultado</th><th>Responsable</th><th>Acción</th></tr></thead><tbody id="incubatorReadingRows"></tbody></table></div>
+        </div>
+
+        <div class="panel">
+          <div class="section-head"><div><h3>Verificación con termómetro patrón</h3><p>Comparación independiente del registro diario. Formato base: patrón PF/09.</p></div></div>
+          <form id="incubatorVerificationForm" class="form-grid">
+            <label>Fecha<input name="date" type="date" required></label>
+            <label>Código incubadora<input name="equipmentCode" value="EI/365" readonly></label>
+            <label>Termómetro patrón<input name="referenceCode" value="PF/09" required></label>
+            <label>Temperatura incubadora (°C)<input name="equipmentTemperature" type="number" step="0.1" required></label>
+            <label>Temperatura patrón (°C)<input name="referenceTemperature" type="number" step="0.1" required></label>
+            <label>Diferencia automática (°C)<input name="difference" readonly></label>
+            <label>Responsable<input name="analyst" readonly></label>
+            <label class="span-2">Observaciones<textarea name="notes" rows="2"></textarea></label>
+            <div class="form-actions span-2"><button class="primary" type="submit">Guardar verificación</button></div>
+          </form>
+          <div class="table-wrap"><table><thead><tr><th>Fecha</th><th>Incubadora</th><th>Patrón</th><th>Temp. equipo</th><th>Temp. patrón</th><th>Diferencia</th><th>Responsable</th></tr></thead><tbody id="incubatorVerificationRows"></tbody></table></div>
+        </div>
+
+        <div class="panel">
+          <div class="section-head"><div><h3>Trazabilidad de la carta</h3><p>Registros, correcciones y cambios de configuración.</p></div></div>
+          <div class="table-wrap"><table><thead><tr><th>Fecha/hora</th><th>Evento</th><th>Usuario</th><th>Detalle</th></tr></thead><tbody id="incubatorTraceRows"></tbody></table></div>
+        </div>
+      </div>
+
+
+      <div id="equipment-tab-waterbath" class="control-chart-pane">
+        <div class="panel">
+          <div class="section-head">
+            <div>
+              <h3>🌡️ Carta de Control · Baño de María</h3>
+              <p>Control independiente de temperatura del baño de María, con límites, tendencias y trazabilidad mensual.</p>
+            </div>
+            <div class="inline-actions">
+              <label>Mes<input id="waterBathMonth" type="month"></label>
+              <button id="waterBathExportBtn">⬇️ Exportar CSV</button>
+            </div>
+          </div>
+
+          <div class="kpis incubator-kpis">
+            <article class="kpi"><span>Estado de hoy</span><strong id="wbKpiToday">—</strong></article>
+            <article class="kpi"><span>Promedio del mes</span><strong id="wbKpiAverage">—</strong></article>
+            <article class="kpi"><span>Mínimo</span><strong id="wbKpiMin">—</strong></article>
+            <article class="kpi"><span>Máximo</span><strong id="wbKpiMax">—</strong></article>
+            <article class="kpi"><span>Fuera de control</span><strong id="wbKpiOut">0</strong></article>
+          </div>
+
+          <div class="incubator-reference-card">
+            <div>
+              <b id="waterBathEquipmentTitle">Baño de María</b>
+              <small id="waterBathCriteriaText">Objetivo 44,5 °C · límites 44,0–45,0 °C</small>
+            </div>
+            <button type="button" id="waterBathEditConfig">⚙️ Configurar (FT)</button>
+          </div>
+
+          <div class="incubator-chart-wrap">
+            <svg id="waterBathChart" class="incubator-chart" viewBox="0 0 1100 360" role="img" aria-label="Carta de control mensual del baño de María"></svg>
+          </div>
+          <div class="chart-legend">
+            <span><i class="legend-line data"></i>Temperatura registrada</span>
+            <span><i class="legend-line center"></i>44,5 °C</span>
+            <span><i class="legend-line limit"></i>Límites 44,0 / 45,0 °C</span>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h3>Registro diario de temperatura</h3>
+          <p class="muted">Lunes a viernes. Sábados, domingos y feriados quedan NO PROGRAMADOS. Si el baño no se utilizó, el día puede justificarse sin afectar la carta.</p>
+          <form id="waterBathReadingForm" class="form-grid">
+            <input type="hidden" name="id">
+            <label>Fecha<input name="date" type="date" required></label>
+            <label>Hora<input name="time" type="time" required></label>
+            <label>Código equipo<input name="equipmentCode" readonly></label>
+            <label>Temperatura observada (°C)<input name="temperature" type="number" step="0.1" required></label>
+            <label>Resultado<input name="result" readonly></label>
+            <label>Registrado por<input name="analyst" readonly></label>
+            <label class="span-2">Observaciones<textarea name="notes" rows="2"></textarea></label>
+            <div id="waterBathReadingPreview" class="span-2 state-card state-pending"><strong>PENDIENTE</strong><span>Ingrese la temperatura.</span></div>
+            <div class="form-actions span-2">
+              <button class="primary" type="submit">Guardar temperatura</button>
+              <button type="button" id="waterBathReadingCancel">Cancelar edición</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="panel">
+          <h3>Control mensual</h3>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Fecha</th><th>Día</th><th>Hora</th><th>Temperatura</th><th>Resultado</th><th>Responsable</th><th>Acción</th></tr></thead>
+              <tbody id="waterBathReadingRows"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="section-head">
+            <div>
+              <h3>Verificación con termómetro patrón</h3>
+              <p>Comparación independiente del baño con un termómetro patrón. El código puede configurarse cuando definas el equipo oficial.</p>
+            </div>
+          </div>
+          <form id="waterBathVerificationForm" class="form-grid">
+            <label>Fecha<input name="date" type="date" required></label>
+            <label>Código baño<input name="equipmentCode" readonly></label>
+            <label>Termómetro patrón<input name="referenceCode" required></label>
+            <label>Temperatura baño (°C)<input name="equipmentTemperature" type="number" step="0.1" required></label>
+            <label>Temperatura patrón (°C)<input name="referenceTemperature" type="number" step="0.1" required></label>
+            <label>Diferencia automática (°C)<input name="difference" readonly></label>
+            <label>Responsable<input name="analyst" readonly></label>
+            <label class="span-2">Observaciones<textarea name="notes" rows="2"></textarea></label>
+            <div class="form-actions span-2"><button class="primary" type="submit">Guardar verificación</button></div>
+          </form>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Fecha</th><th>Baño</th><th>Patrón</th><th>Temp. equipo</th><th>Temp. patrón</th><th>Diferencia</th><th>Responsable</th></tr></thead>
+              <tbody id="waterBathVerificationRows"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="section-head">
+            <div><h3>Trazabilidad del Baño de María</h3><p>Lecturas, días no utilizados, correcciones, verificaciones y cambios de configuración.</p></div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Fecha/hora</th><th>Evento</th><th>Usuario</th><th>Detalle</th></tr></thead>
+              <tbody id="waterBathTraceRows"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+
+        <div id="equipment-tab-phmeter" class="control-chart-pane">
+          <div class="panel">
+            <div class="section-head">
+              <div>
+                <h3>🧪 Carta de Control · pHmetro de Laboratorio</h3>
+                <p>Control diario de buffers pH 7,00 · 4,00 · 10,00 con límites independientes y trazabilidad.</p>
+              </div>
+              <div class="inline-actions">
+                <label>Mes<input id="phMeterMonth" type="month"></label>
+                <button id="phMeterExportBtn">⬇️ Exportar CSV</button>
+              </div>
+            </div>
+
+            <div class="kpis phmeter-kpis">
+              <article class="kpi"><span>Estado de hoy</span><strong id="phKpiToday">—</strong></article>
+              <article class="kpi"><span>Días registrados</span><strong id="phKpiRegistered">0</strong></article>
+              <article class="kpi"><span>Fuera de control</span><strong id="phKpiOut">0</strong></article>
+              <article class="kpi"><span>No utilizado</span><strong id="phKpiNoUse">0</strong></article>
+            </div>
+
+            <div class="incubator-reference-card">
+              <div>
+                <b id="phMeterEquipmentTitle">MEDIDOR DE pH · Orion Star A214 · EI/188</b>
+                <small id="phMeterCriteriaText">pH 7,00 ±0,10 · pH 4,00 ±0,10 · pH 10,00 ±0,10</small>
+              </div>
+              <button type="button" id="phMeterEditConfig">⚙️ Configurar (FT)</button>
+            </div>
+          </div>
+
+          <div class="panel">
+            <h3>Buffer pH 7,00</h3>
+            <div class="incubator-chart-wrap"><svg id="phChart7" class="incubator-chart ph-chart" viewBox="0 0 1100 300"></svg></div>
+            <div class="chart-legend"><span><i class="legend-line data"></i>Lectura</span><span><i class="legend-line center"></i>7,00</span><span><i class="legend-line limit"></i>6,90 / 7,10</span></div>
+          </div>
+
+          <div class="panel">
+            <h3>Buffer pH 4,00</h3>
+            <div class="incubator-chart-wrap"><svg id="phChart4" class="incubator-chart ph-chart" viewBox="0 0 1100 300"></svg></div>
+            <div class="chart-legend"><span><i class="legend-line data"></i>Lectura</span><span><i class="legend-line center"></i>4,00</span><span><i class="legend-line limit"></i>3,90 / 4,10</span></div>
+          </div>
+
+          <div class="panel">
+            <h3>Buffer pH 10,00</h3>
+            <div class="incubator-chart-wrap"><svg id="phChart10" class="incubator-chart ph-chart" viewBox="0 0 1100 300"></svg></div>
+            <div class="chart-legend"><span><i class="legend-line data"></i>Lectura</span><span><i class="legend-line center"></i>10,00</span><span><i class="legend-line limit"></i>9,90 / 10,10</span></div>
+          </div>
+
+          <div class="panel">
+            <h3>Registro diario de control</h3>
+            <p class="muted">Lunes a viernes. Sábados, domingos y feriados: NO PROGRAMADO. Si el pHmetro no se utilizó, el día puede justificarse sin afectar las cartas.</p>
+            <form id="phMeterReadingForm" class="form-grid">
+              <input type="hidden" name="id">
+              <label>Fecha<input name="date" type="date" required></label>
+              <label>Hora<input name="time" type="time" required></label>
+              <label>Código equipo<input name="equipmentCode" readonly></label>
+              <label>Buffer pH 7,00<input name="ph7" type="number" step="0.01" required></label>
+              <label>Buffer pH 4,00<input name="ph4" type="number" step="0.01" required></label>
+              <label>Buffer pH 10,00<input name="ph10" type="number" step="0.01" required></label>
+              <label>Resultado<input name="result" readonly></label>
+              <label>Analista<input name="analyst" readonly></label>
+              <label class="span-2">Observaciones<textarea name="notes" rows="2"></textarea></label>
+              <div id="phMeterReadingPreview" class="span-2 state-card state-pending"><strong>PENDIENTE</strong><span>Complete los tres buffers.</span></div>
+              <div class="form-actions span-2"><button class="primary" type="submit">Guardar control pHmetro</button><button type="button" id="phMeterReadingCancel">Cancelar edición</button></div>
+            </form>
+          </div>
+
+          <div class="panel">
+            <h3>Control mensual</h3>
+            <div class="table-wrap"><table>
+              <thead><tr><th>Fecha</th><th>Día</th><th>Hora</th><th>pH 7</th><th>pH 4</th><th>pH 10</th><th>Resultado</th><th>Analista</th><th>Acción</th></tr></thead>
+              <tbody id="phMeterReadingRows"></tbody>
+            </table></div>
+          </div>
+
+          <div class="panel">
+            <div class="section-head"><div><h3>Control de exactitud</h3><p>Sección independiente tomada del formato PEC0304-03. Registra el valor observado sin imponer un criterio adicional no documentado.</p></div></div>
+            <form id="phMeterAccuracyForm" class="form-grid">
+              <label>Fecha<input name="date" type="date" required></label>
+              <label>pH observado<input name="ph" type="number" step="0.01" required></label>
+              <label>Analista<input name="analyst" readonly></label>
+              <label class="span-2">Observaciones<textarea name="notes" rows="2"></textarea></label>
+              <div class="form-actions span-2"><button class="primary" type="submit">Guardar control de exactitud</button></div>
+            </form>
+            <div class="table-wrap"><table>
+              <thead><tr><th>Fecha</th><th>Día</th><th>pH</th><th>Analista</th><th>Observaciones</th></tr></thead>
+              <tbody id="phMeterAccuracyRows"></tbody>
+            </table></div>
+          </div>
+
+          <div class="panel">
+            <h3>Trazabilidad del pHmetro</h3>
+            <div class="table-wrap"><table>
+              <thead><tr><th>Fecha/hora</th><th>Evento</th><th>Usuario</th><th>Detalle</th></tr></thead>
+              <tbody id="phMeterTraceRows"></tbody>
+            </table></div>
+          </div>
+        </div>
+
+      </div>
+
+<div id="equipment-tab-catalog" class="equipment-tabpane">
+        <div class="panel">
+          <h3>Catálogo y reglas de control</h3>
+          <p class="muted">Las reglas se configuran por equipo. Los dos autoclaves se cargan inicialmente con los parámetros de tus registros Excel.</p>
+          <div class="table-wrap"><table><thead><tr><th>Equipo</th><th>Uso</th><th>Attest</th><th>Alerta</th><th>Sterikon</th><th>Temperatura</th><th>Tiempo mín.</th><th>Acción</th></tr></thead><tbody id="equipmentCatalogRows"></tbody></table></div>
+        </div>
+      </div>
+
+      <div id="equipment-tab-history" class="equipment-tabpane">
+        <div class="panel">
+          <div class="section-head"><div><h3>Trazabilidad del equipo</h3><p>Eventos de control, limpieza y cambios de configuración.</p></div><button id="equipmentExportBtn">⬇️ Exportar CSV</button></div>
+          <div class="table-wrap"><table><thead><tr><th>Fecha/hora</th><th>Equipo</th><th>Evento</th><th>Usuario</th><th>Detalle</th></tr></thead><tbody id="equipmentTraceRows"></tbody></table></div>
+        </div>
+      </div>
+    </section>
+
+<section id="view-settings" class="view">
+      <div class="section-head"><div><h2>Administración</h2><p>Catálogos maestros. No forman parte del trabajo diario.</p></div></div>
+      <div class="panel" id="accessControlPanel">
+        <h3>0. Usuarios, roles y permisos</h3><div class="statusbox security-admin-note"><b>Seguridad:</b> cambios de rol/permisos quedan auditados. Las eliminaciones requieren Administrador + reautenticación Firebase.</div>
+        <p class="hint"><b>V3.5.0-C:</b> los permisos se asignan únicamente a los usuarios ya existentes en el Catálogo de personal. No se crean ni duplican usuarios aquí. JJF permanece como Administrador con acceso total. Esta fase todavía no activa Firebase.</p>
+        <form id="accessUserForm" class="form-grid compact-form">
+          <label>Usuario<select name="userCode" id="accessUserSelect" required></select></label>
+          <label>Rol base<select name="role" id="accessRoleSelect" required>
+            <option value="ADMIN">Administrador</option>
+            <option value="OPERADOR">Operador</option>
+            <option value="SUPERVISOR">Supervisor</option>
+          </select></label>
+          <label>Correo Firebase<input type="email" id="accessFirebaseEmail" placeholder="usuario@empresa.com"><small>Cuenta creada en Firebase Authentication para este usuario ERP.</small></label>
+          <div class="wide table-wrap">
+            <table class="permissions-table">
+              <thead><tr><th>Módulo</th><th>Permiso</th></tr></thead>
+              <tbody id="accessPermissionRows"></tbody></table></div>
+        <div class="actions" style="margin:12px 0">
+          <button id="publishUserDirectoryBtn" type="button">Publicar usuarios autorizados en Firebase</button>
+        </div>
+        <p class="hint" id="userDirectoryStatus">Directorio cloud: pendiente de publicación.</p>
+<p class="hint" id="accessUserSourceNote">Fuente de usuarios: Catálogo de personal existente del ERP.</p><div class="wide table-wrap"><table style="display:none">
+            </table>
+          </div>
+          <div class="wide actions"><button class="primary" type="submit">Guardar permisos</button><button id="accessResetBtn" type="button">Restaurar perfil del rol</button></div>
+        </form>
+      </div>
+      <div class="panel"><h3>1. Catálogo de medios</h3>
+        <form id="mediaCatalogForm" class="form-grid compact-form"><input type="hidden" name="id"><label>Medio<input name="name" required></label><label>Tipo<select name="type" id="catalogTypeSelect" required></select></label><label>Clasificación técnica<select name="technicalClass" id="catalogTechnicalClassSelect" required></select></label><label>Prefijo<input name="prefix" required></label><label>Concentración (g/L)<input name="concentration" type="number" step="0.01" required></label><label>Vigencia medio preparado (días)<input name="shelfLifeDays" type="number" min="1" required><small>Editable por Calidad. Se usa para calcular el vencimiento del nuevo lote preparado.</small></label><label>pH mínimo<input name="phMin" type="number" step="0.01"></label><label>pH máximo<input name="phMax" type="number" step="0.01"></label><label>Color esperado<input name="expectedColor"></label><label class="wide">Apariencia esperada<input name="expectedAppearance"></label><div class="wide performance-profile-admin"><b>Perfil de cepas para rendimiento</b><small>El ERP usa estas cepas automáticamente según la clasificación técnica. Complete solo las pruebas que correspondan al medio.</small></div><label>Cepa Productividad<select name="performanceProductivityStrain" class="performance-strain-admin"></select></label><label>Cepa Selectividad<select name="performanceSelectivityStrain" class="performance-strain-admin"></select></label><label>Cepa Especificidad<select name="performanceSpecificityStrain" class="performance-strain-admin"></select></label><div class="wide actions"><button class="primary" type="submit">Guardar medio</button><button id="clearMediaCatalogBtn" type="button">Limpiar</button></div></form>
+        <div class="table-wrap"><table><thead><tr><th>Medio</th><th>Tipo</th><th>Clasificación</th><th>Rendimiento requerido</th><th>Prefijo</th><th>Conc.</th><th>Vigencia preparado</th><th>pH</th><th>Color</th><th>Apariencia</th><th></th></tr></thead><tbody id="mediaCatalogRows"></tbody></table></div>
+      </div>
+      <div class="panel"><h3>2. Catálogo de frascos / lotes de medios deshidratados</h3>
+        <p class="hint"><b>Vencimientos separados:</b> aquí se registra la fecha de vencimiento del medio deshidratado indicada por el fabricante. La vigencia del medio ya preparado se configura en el Catálogo de medios y se calcula automáticamente al preparar. Cada frasco/lote es un registro independiente.  Un frasco <b>NUEVO</b> puede usarse solo para su primera preparación; al abrirse queda <b>PENDIENTE DE RENDIMIENTO</b>. El ERP determina las pruebas desde la clasificación del medio: General = Productividad; Selectivo = Productividad + Selectividad; Diferencial/Cromogénico = Productividad + Selectividad + Especificidad. Al calificarse queda disponible. Dar de baja conserva toda la trazabilidad.</p>
+        <form id="bottleCatalogForm" class="form-grid compact-form"><input type="hidden" name="id"><label>Medio<select name="medium" id="bottleMediumSelect" required></select></label><label>Código / lote del frasco<input name="code" required placeholder="Ej. M0A1LY01-1"></label><label>Fecha vencimiento frasco / fabricante<input name="expiryDate" type="date" required><small>Fecha impresa por el fabricante del medio deshidratado.</small></label><label>Estado inicial<input value="NUEVO · automático" readonly></label><div class="wide auto-fields" id="bottleFormMode">Nuevo frasco/lote</div><div class="wide actions"><button class="primary" type="submit">Guardar nuevo frasco</button><button id="clearBottleCatalogBtn" type="button">Limpiar</button></div></form>
+        <div class="table-wrap"><table><thead><tr><th>Medio</th><th>Frasco/lote</th><th>Vence fabricante</th><th>Vigencia frasco</th><th>Apertura</th><th>Calificación</th><th>Uso</th><th>Calificado</th><th>Lote que calificó</th><th>Baja</th><th>Acción</th></tr></thead><tbody id="bottleCatalogRows"></tbody></table></div>
+      </div>
+      <div class="panel"><h3>3. Catálogo de cepas de referencia</h3>
+        <p class="hint">Identificación y condiciones maestras. Los registros históricos guardan snapshot de estos criterios.</p>
+        <form id="strainCatalogForm" class="form-grid compact-form"><input type="hidden" name="id">
+          <label>Nombre de cepa<input name="name" required></label>
+          <label>ATCC / N° producto<input name="referenceCode" required></label>
+          <label>Lote proveedor<input name="supplierLot" required></label>
+          <label>Caducidad referencia<input name="referenceExpiry" type="date" required></label>
+          <label>Código corto<input name="shortCode" required placeholder="EC, ENT, SAL..."></label>
+          <label>Medio recomendado<input name="recommendedMedium" value="Agar Nutriente" required></label>
+          <label>Temp. incubación °C<input name="incubationTemp" type="number" step="0.1" required></label>
+          <label>Tiempo incubación h<input name="incubationHours" type="number" min="1" required></label>
+          <label>Vida útil criovial (meses)<input name="cryovialLifeMonths" type="number" min="1" required></label>
+          <label>Temp. almacenamiento<input name="storageTemp" required></label>
+          <label class="wide">Morfología esperada<input name="expectedMorphology" required></label>
+          <div class="wide actions"><button class="primary" type="submit">Guardar cepa</button><button id="clearStrainCatalogBtn" type="button">Limpiar</button></div>
+        </form>
+        <div class="table-wrap"><table><thead><tr><th>Cepa</th><th>Referencia</th><th>Lote proveedor</th><th>Caduca</th><th>Incubación</th><th>Vida criovial</th><th>Almacenamiento</th><th></th></tr></thead><tbody id="strainCatalogRows"></tbody></table></div>
+      </div>
+      <div class="panel"><h3>4. Motor de Reglas y Criterios</h3>
+        <p class="hint"><b>Fuente única de verdad técnica.</b> Una modificación crea una nueva versión; nunca reescribe la versión histórica. Los registros operativos futuros guardarán un snapshot del criterio vigente.</p>
+        <form id="criterionForm" class="form-grid compact-form"><input type="hidden" name="ruleId">
+          <label>Código<input name="code" required placeholder="CR-MC-001"></label><label>Nombre<input name="name" required></label>
+          <label>Dominio<select name="domain" required><option value="CONTROL_MICROBIOLOGICO">Control microbiológico</option><option value="MEDIOS">Medios</option><option value="CEPAS">Cepas</option><option value="VALIDACIONES">Validaciones</option></select></label>
+          <label>Alcance / Scope key<input name="scopeKey" required placeholder="POINT:... / MEDIUM:..."></label>
+          <label>Target<input name="target" type="number" step="any"></label><label>Alerta<input name="alert" type="number" step="any" placeholder="Opcional"></label><label>Acción<input name="action" type="number" step="any"></label>
+          <label>Mínimo<input name="min" type="number" step="any"></label><label>Máximo<input name="max" type="number" step="any"></label><label>Unidad<input name="unit" placeholder="UFC/m³, UFC/cm², mFc..."></label>
+          <label>Origen<select name="sourceType"><option value="PROCEDIMIENTO_INTERNO">Procedimiento interno</option><option value="NORMA">Norma / método</option><option value="CLIENTE">Requisito cliente</option><option value="CATALOGO_TECNICO">Catálogo técnico</option><option value="VALIDACION">Validación</option><option value="OTRO">Otro</option></select></label>
+          <label>Vigente desde<input name="effectiveFrom" type="date" required></label><label class="wide">Fuente / referencia<input name="sourceReference" required placeholder="MC2109-03 Rev... / método aplicable"></label>
+          <label class="wide">Notas de cambio<textarea name="notes" rows="2"></textarea></label><div id="criterionFormMode" class="wide auto-fields">Nuevo criterio / nueva regla</div>
+          <div class="wide actions"><button class="primary" type="submit">Guardar nueva versión</button><button id="clearCriterionBtn" type="button">Limpiar</button></div>
+        </form>
+        <div class="table-wrap"><table><thead><tr><th>Código / dominio</th><th>Criterio</th><th>Alcance</th><th>Versión</th><th>Valores vigentes</th><th>Fuente</th><th>Estado</th><th>Acción</th></tr></thead><tbody id="criteriaRuleRows"></tbody></table></div>
+      </div>
+      <div class="panel"><h3>5. Catálogo Maestro de Microorganismos</h3>
+        <p class="hint">Identidad técnica única. Los lotes físicos de cepas continúan en el Catálogo de Cepas de Referencia; aquí no se duplican lotes ni caducidades.</p>
+        <form id="microorganismMasterForm" class="form-grid compact-form"><input type="hidden" name="id"><label>Microorganismo<input name="name" required></label><label>Referencia maestra<input name="referenceCode" placeholder="ATCC / WDCM / NCTC"></label><label>Código corto<input name="shortCode"></label><label>Usos<input name="uses" placeholder="CEPAS, RENDIMIENTO, VALIDACION"></label><div class="wide actions"><button class="primary" type="submit">Guardar microorganismo</button></div></form>
+        <div class="table-wrap"><table><thead><tr><th>Microorganismo</th><th>Referencia</th><th>Código</th><th>Usos</th><th>Estado</th><th></th></tr></thead><tbody id="microorganismMasterRows"></tbody></table></div>
+      </div>
+      <div class="panel"><h3>6. Personal autorizado</h3><form id="personCatalogForm" class="inline-form"><input type="hidden" name="id"><input name="code" placeholder="Código" required><input name="name" placeholder="Nombre / descripción"><button class="primary" type="submit">Guardar</button></form><div class="table-wrap"><table class="small-table"><thead><tr><th>Código</th><th>Nombre</th><th></th></tr></thead><tbody id="personCatalogRows"></tbody></table></div></div>
+      <div class="panel"><h3>7. Parámetros del sistema</h3><form id="systemConfigForm" class="form-grid compact-form"><label>Esterilidad (días)<input name="sterilityDays" value="0" readonly></label><label>Macroscópico (días)<input name="macroscopicDays" type="number" min="0" required></label><label>Rendimiento programado (días)<input name="performanceDays" type="number" min="0" required></label><label>Alerta antes de vencer (días)<input name="alertDays" type="number" min="0" required></label><div class="wide actions"><button class="primary" type="submit">Guardar parámetros</button></div></form></div>
+      <div class="panel"><h3>Cloud Foundation · Firebase Authentication + Firestore</h3><p class="hint">Local-First: IndexedDB continúa siendo la base local. Firebase replica únicamente después de autenticación válida y reglas seguras.</p><form id="firebaseForm" class="form-grid"><label>API key<input name="apiKey"></label><label>Auth domain<input name="authDomain"></label><label>Project ID<input name="projectId"></label><label>Storage bucket<input name="storageBucket"></label><label>Messaging sender ID<input name="messagingSenderId"></label><label>App ID<input name="appId"></label><div class="wide actions"><button type="button" id="disconnectBtn">Modo local activo</button></div><div class="actions" style="margin-top:10px"><button type="submit">Guardar configuración Firebase</button></div></form>
+        <div class="firebase-auth-box unified-auth-box">
+          <h4>Sesión Firebase unificada</h4>
+          <div class="form-grid compact-form">
+            <label>Usuario ERP<input id="firebaseAuthErpUser" readonly></label>
+            <label>Correo autenticado<input id="firebaseAuthEmail" type="email" readonly></label>
+          </div>
+          <div id="firebaseAuthStatus" class="statusbox">Firebase Auth: verificando sesión…</div>
+          <p class="hint">La autenticación se realiza únicamente en la pantalla de acceso. Esta sección solo muestra la sesión activa.</p>
+        </div>
+        <div class="actions" style="margin-top:10px">
+          <button id="enableCloudBtn" type="button" disabled title="Primero inicie sesión Firebase">Activar sincronización Multi-PC</button>
+          <button id="disableCloudBtn" type="button">Desactivar sincronización</button>
+        </div>
+        <p class="hint" id="cloudModeHint">Inicio de sesión único: Authentication y Firebase Multi-PC se conectan automáticamente como una sola sesión.</p><div class="statusbox" id="firebaseStatus">Firebase definido · autenticación requerida · sincronización desactivada.</div><div class="statusbox">Workspace: <code>lab-psi</code> · Schema: <code>1</code> · Local source of truth: <b>IndexedDB</b></div></div>
+
+      <div class="panel" id="centralAuditPanel">
+        <div class="audit-head">
+          <div>
+            <h3>8. Auditoría central de usuarios y cambios</h3>
+            <p class="hint">Historial automático de sesiones y cambios. Solo lectura: no se edita ni se elimina desde el ERP.</p>
+          </div>
+          <span class="badge">AUDITORÍA PROTEGIDA</span>
+        </div>
+        <div class="form-grid compact-form audit-filters">
+          <label>Usuario
+            <select id="auditUserFilter"><option value="">Todos</option></select>
+          </label>
+          <label>Módulo
+            <select id="auditModuleFilter"><option value="">Todos</option></select>
+          </label>
+          <label>Acción
+            <select id="auditActionFilter">
+              <option value="">Todas</option>
+              <option>LOGIN</option>
+              <option>LOGOUT</option>
+              <option>LOGOUT_INACTIVITY</option>
+              <option>CREATE</option>
+              <option>EDIT</option>
+              <option>DELETE</option><option>DELETE_DENIED</option><option>DELETE_AUTHORIZED</option><option>PERMISSIONS_CHANGE</option><option>USER_DIRECTORY_PUBLISH</option>
+              <option>LIBERAR</option>
+              <option>CERRAR</option>
+            </select>
+          </label>
+          <label>Desde<input id="auditDateFrom" type="date"></label>
+          <label>Hasta<input id="auditDateTo" type="date"></label>
+          <label>Buscar<input id="auditTextFilter" placeholder="Código, registro, detalle..."></label>
+        </div>
+        <div class="actions audit-actions">
+          <button type="button" id="auditRefreshBtn">Actualizar auditoría</button>
+          <button type="button" id="auditClearFiltersBtn">Limpiar filtros</button>
+        </div>
+        <div class="statusbox" id="auditSummary">Sin eventos para mostrar.</div>
+        <div class="table-wrap">
+          <table class="small-table audit-table">
+            <thead>
+              <tr>
+                <th>Fecha / hora</th><th>Usuario</th><th>Correo</th><th>Módulo</th><th>Acción</th><th>Registro</th><th>Dispositivo</th><th>Detalle</th>
+              </tr>
+            </thead>
+            <tbody id="centralAuditRows"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="panel"><h3>Estado técnico</h3><div class="statusbox">Dispositivo: <code id="deviceId"></code> · Outbox: <b id="outboxCount">0</b></div></div>
+    </section>
+  </main>
+</div>
+<div id="lotModal" class="modal" aria-hidden="true"><div class="modal-card"><button id="closeLotModal" class="modal-close">×</button><div id="lotModalContent"></div></div></div>
+<div id="sampleTraceModal" class="modal" aria-hidden="true"><div class="modal-card sample-trace-modal-card"><button id="closeSampleTraceModal" class="modal-close">×</button><div id="sampleTraceModalContent"></div></div></div>
+<div id="toast" class="toast"></div>
+<script type="module" src="app.js?v=V353C"></script>
+</body>
+</html>
