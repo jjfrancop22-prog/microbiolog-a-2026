@@ -1,16 +1,24 @@
-# MICROBIOLOGÍA ERP V3.5.3-C1 — Production Firebase Bootstrap Fix
+# MICROBIOLOGÍA ERP V3.5.3-C2 — Fast Production Bootstrap
 
-Corrección para GitHub + Netlify:
-- La configuración web pública de Firebase queda precargada en `app.js`.
-- En un dominio nuevo (Netlify, otra PC o navegador limpio) el ERP ya no depende de un `localStorage` configurado previamente.
-- Si existe una configuración válida en `localStorage`, se conserva.
-- Si no existe, se carga automáticamente el proyecto `laboratorio-kardex`.
-- Se mantiene Firebase Authentication, Firestore, Multi-PC, permisos, auditoría y cierre de sesión por inactividad.
-- Se mantiene reautenticación Firebase para acciones críticas.
-- Se añadió favicon vacío para evitar el 404 irrelevante de `/favicon.ico`.
+Corrección para el primer acceso en Netlify / navegador nuevo:
 
-Para Netlify:
-1. Sustituir los archivos del repositorio por los de esta carpeta.
-2. Confirmar que `microbiologia-erp.netlify.app` esté en Firebase Authentication > Authorized domains.
-3. Netlify debe desplegar el nuevo commit automáticamente.
-4. Probar inicio de sesión en una ventana privada o navegador limpio.
+- Authentication y Firestore conectan primero.
+- El indicador cambia rápidamente a `FIREBASE`.
+- Los listeners Multi-PC se activan inmediatamente.
+- La descarga inicial de colecciones se ejecuta en segundo plano y en paralelo.
+- Un dominio con error o timeout no deja todo el ERP eternamente en `SINCRONIZANDO`.
+- El Estado técnico informa si la carga fue completa, parcial o vacía.
+- Cada dominio tiene un timeout de bootstrap de 15 segundos.
+- El outbox ya no cambia toda la cabecera a `SINCRONIZANDO` durante cada envío rutinario.
+- Se conserva V3.5.3-C1: configuración Firebase de producción precargada.
+- No se modifican Authentication, permisos, auditoría, reglas de negocio ni estructura Firestore.
+
+## Actualizar Netlify
+Reemplace en GitHub los archivos de la versión C1 por los de esta C2. Netlify desplegará el nuevo commit automáticamente.
+
+Prueba recomendada:
+1. Abrir `https://microbiologia-erp.netlify.app` en ventana privada.
+2. Iniciar sesión.
+3. Confirmar que la cabecera pase de `SINCRONIZANDO` a `FIREBASE` rápidamente.
+4. Esperar unos segundos y verificar que los datos cloud aparezcan.
+5. Revisar Administración > Estado técnico para confirmar el resultado del bootstrap.

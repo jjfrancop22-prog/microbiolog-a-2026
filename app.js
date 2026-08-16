@@ -1,4 +1,4 @@
-const VERSION='V3.5.3-C1';
+const VERSION='V3.5.3-C2';
 const SCHEMA_VERSION=1;
 const WORKSPACE_ID='lab-psi';
 let CLOUD_SYNC_ENABLED=localStorage.getItem('microbio_cloud_enabled')==='true'; // sesión unificada puede activarla automáticamente tras login válido
@@ -3447,48 +3447,105 @@ async function localOperationalRecordCount(){
 function bootstrapStatus(text,mode=''){
   const el=document.getElementById('bootstrapStatus');if(el){el.textContent=text;el.dataset.mode=mode}
 }
-async function writeBootstrapRemoteRecord(domain,data){
+
+let backgroundBootstrapPromise=null;
+
+async function writeBootstrapRemoteRecordFast(domain,data,recordMap){
   if(!data?.id)return 0;
   const key=`${domain}:${data.id}`;
-  const all=await idbAll('records');
-  const current=all.find(x=>x.key===key)?.data;
+  const current=recordMap.get(key)?.data;
   if(current&&(Number(current.updatedAtMs||0)>Number(data.updatedAtMs||0)))return 0;
-  await idbPut('records',{key,domain,data,deleted:!!data.deleted});
+  const row={key,domain,data,deleted:!!data.deleted};
+  await idbPut('records',row);
+  recordMap.set(key,row);
   return 1;
 }
-async function bootstrapNewPcFromCloud(fsMod,fs){
+
+function withBootstrapTimeout(promise,domain,ms=15000){
+  return Promise.race([
+    promise,
+    new Promise((_,reject)=>setTimeout(()=>reject(new Error(`Timeout de bootstrap: ${domain}`)),ms))
+  ]);
+}
+
+async function bootstrapNewPcFromCloudFast(fsMod,fs){
   const localCount=await localOperationalRecordCount();
   if(localCount>0){
     bootstrapStatus(`Bootstrap omitido: esta computadora ya tiene ${localCount} registro(s) operativos locales.`,'SKIPPED');
-    return {bootstrapped:false,reason:'LOCAL_DATA_EXISTS',received:0};
+    return {bootstrapped:false,reason:'LOCAL_DATA_EXISTS',received:0,errors:[]};
   }
 
-  bootstrapStatus('Bootstrap: buscando información existente en Firebase…','RUNNING');
-  let received=0,cloudDocs=0;
+  bootstrapStatus('Firebase conectado · cargando datos iniciales en segundo plano…','RUNNING');
 
-  for(const domain of DOMAINS){
-    const ref=fsMod.collection(fs,'workspaces',WORKSPACE_ID,CLOUD_COLLECTIONS[domain]);
-    const snap=await fsMod.getDocs(ref);
-    cloudDocs+=snap.size;
-    for(const doc of snap.docs){
-      const data=doc.data();
-      received+=await writeBootstrapRemoteRecord(domain,data);
+  const existingRows=await idbAll('records');
+  const recordMap=new Map(existingRows.map(r=>[r.key,r]));
+  let received=0,cloudDocs=0;
+  const errors=[];
+
+  const jobs=DOMAINS.map(async domain=>{
+    try{
+      const ref=fsMod.collection(fs,'workspaces',WORKSPACE_ID,CLOUD_COLLECTIONS[domain]);
+      const snap=await withBootstrapTimeout(fsMod.getDocs(ref),domain);
+      let domainReceived=0;
+      cloudDocs+=snap.size;
+      for(const doc of snap.docs){
+        domainReceived+=await writeBootstrapRemoteRecordFast(domain,doc.data(),recordMap);
+      }
+      received+=domainReceived;
+      return {domain,ok:true,count:snap.size,received:domainReceived};
+    }catch(err){
+      const message=String(err?.message||err);
+      errors.push({domain,message});
+      console.warn(`Bootstrap ${domain}:`,err);
+      return {domain,ok:false,error:message,count:0,received:0};
     }
+  });
+
+  const results=await Promise.all(jobs);
+
+  if(cloudDocs>0){
+    await loadLocal();
+    renderAll();
+    localStorage.setItem('microbio_bootstrap_completed_at',nowISO());
+    localStorage.setItem('microbio_bootstrap_device',deviceId);
+    await idbPut('syncMeta',{
+      key:`bootstrap:${deviceId}`,
+      deviceId,received,cloudDocs,
+      errors,
+      completedAt:nowISO(),
+      version:VERSION
+    });
+  }
+
+  if(errors.length){
+    const names=errors.slice(0,3).map(x=>x.domain).join(', ');
+    bootstrapStatus(`Carga inicial parcial: ${received} registro(s). ${errors.length} dominio(s) con error: ${names}${errors.length>3?'…':''}`,'PARTIAL');
+    if($('#firebaseStatus'))$('#firebaseStatus').textContent=`Firebase conectado · carga inicial parcial (${errors.length} dominio(s) con error).`;
+    return {bootstrapped:cloudDocs>0,reason:'PARTIAL',received,errors,results};
   }
 
   if(cloudDocs===0){
-    bootstrapStatus('Bootstrap: Firebase no contiene datos todavía. Esta PC continúa con su base local inicial.','EMPTY');
-    return {bootstrapped:false,reason:'CLOUD_EMPTY',received:0};
+    bootstrapStatus('Firebase conectado · no hay datos cloud para importar en esta computadora.','EMPTY');
+    return {bootstrapped:false,reason:'CLOUD_EMPTY',received:0,errors:[],results};
   }
 
-  await loadLocal();
-  renderAll();
-  localStorage.setItem('microbio_bootstrap_completed_at',nowISO());
-  localStorage.setItem('microbio_bootstrap_device',deviceId);
-  bootstrapStatus(`Bootstrap completado: ${received} registro(s) recibidos desde Firebase.`,'DONE');
-  await idbPut('syncMeta',{key:`bootstrap:${deviceId}`,deviceId,received,cloudDocs,completedAt:nowISO(),version:VERSION});
-  return {bootstrapped:true,reason:'OK',received};
+  bootstrapStatus(`Carga inicial completada en segundo plano: ${received} registro(s) recibidos.`,'DONE');
+  return {bootstrapped:true,reason:'OK',received,errors:[],results};
 }
+
+function startBackgroundBootstrap(fsMod,fs){
+  if(backgroundBootstrapPromise)return backgroundBootstrapPromise;
+  backgroundBootstrapPromise=bootstrapNewPcFromCloudFast(fsMod,fs)
+    .catch(err=>{
+      console.error('Bootstrap en segundo plano',err);
+      bootstrapStatus('Firebase conectado · la carga inicial encontró un error. Revise Estado técnico.','PARTIAL');
+      if($('#firebaseStatus'))$('#firebaseStatus').textContent='Firebase conectado · error durante carga inicial en segundo plano.';
+      return {bootstrapped:false,reason:'ERROR',received:0,errors:[{domain:'bootstrap',message:String(err?.message||err)}]};
+    })
+    .finally(()=>{backgroundBootstrapPromise=null});
+  return backgroundBootstrapPromise;
+}
+
 async function startCloudListeners(fsMod,fs){
   for(const domain of DOMAINS){
     const ref=fsMod.collection(fs,'workspaces',WORKSPACE_ID,CLOUD_COLLECTIONS[domain]);
@@ -3657,35 +3714,35 @@ async function connectFirebase(config){
 
     const appMod=await import('https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js');
     const fsMod=await import('https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js');
-
-    // IMPORTANTE: reutiliza la app creada por Authentication; no crea un segundo estado Firebase.
     const fbApp=appMod.getApps().length?appMod.getApp():appMod.initializeApp(config);
     const fs=fsMod.getFirestore(fbApp);
 
     state.firebase=fsMod;
     state.firestore=fs;
 
-    // Evita listeners duplicados al reconectar.
     state.listeners?.forEach(fn=>{try{fn()}catch{}});
     state.listeners=[];
 
-    await bootstrapNewPcFromCloud(fsMod,fs);
+    // Los listeners se activan primero: la sesión Multi-PC queda operativa sin esperar el bootstrap completo.
     await startCloudListeners(fsMod,fs);
-
     state.connected=true;
-    if(cloudWriteAllowed())await flushOutbox();
 
     updateFirebaseAuthForm();
     setSyncStatus('online',cloudReadOnlyClient()?'FIREBASE · LECTURA':'FIREBASE');
-    if($('#firebaseStatus'))$('#firebaseStatus').textContent=`Firebase seguro activo · ${state.auth.currentUser.email}.`;
+    if($('#firebaseStatus'))$('#firebaseStatus').textContent=`Firebase seguro activo · ${state.auth.currentUser.email} · carga inicial en segundo plano.`;
     updateSyncActivationAvailability();
+
+    // No bloquear la interfaz ni el estado FIREBASE por la descarga inicial.
+    startBackgroundBootstrap(fsMod,fs);
+
+    if(cloudWriteAllowed())flushOutbox().catch(err=>console.warn('Outbox inicial',err));
   }catch(err){
     state.connected=false;
     setSyncStatus('offline','AUTH');
     if($('#firebaseStatus'))$('#firebaseStatus').textContent='Error de conexión Firebase: '+String(err?.message||err);
   }
 }
-async function flushOutbox(){if(!CLOUD_SYNC_ENABLED||!state.connected||!cloudWriteAllowed())return;const rows=await idbAll('outbox');if(!rows.length){updateOutbox();return}setSyncStatus('syncing','SINCRONIZANDO');for(const row of rows){try{const ref=state.firebase.doc(state.firestore,'workspaces',WORKSPACE_ID,CLOUD_COLLECTIONS[row.domain],row.entityId);await state.firebase.setDoc(ref,row.payload,{merge:true});await idbPut('syncMeta',{key:`ack:${row.opId}`,opId:row.opId,entityId:row.entityId,domain:row.domain,ackedAt:nowISO()});await idbDelete('outbox',row.key)}catch(err){row.attempts=Number(row.attempts||0)+1;row.lastAttemptAt=nowISO();row.lastError=String(err?.message||err);await idbPut('outbox',row);console.error('Sync pendiente',row.key,err)}}await updateOutbox();setSyncStatus('online','FIREBASE')}
+async function flushOutbox(){if(!CLOUD_SYNC_ENABLED||!state.connected||!cloudWriteAllowed())return;const rows=await idbAll('outbox');if(!rows.length){updateOutbox();return}for(const row of rows){try{const ref=state.firebase.doc(state.firestore,'workspaces',WORKSPACE_ID,CLOUD_COLLECTIONS[row.domain],row.entityId);await state.firebase.setDoc(ref,row.payload,{merge:true});await idbPut('syncMeta',{key:`ack:${row.opId}`,opId:row.opId,entityId:row.entityId,domain:row.domain,ackedAt:nowISO()});await idbDelete('outbox',row.key)}catch(err){row.attempts=Number(row.attempts||0)+1;row.lastAttemptAt=nowISO();row.lastError=String(err?.message||err);await idbPut('outbox',row);console.error('Sync pendiente',row.key,err)}}await updateOutbox();if(state.connected)setSyncStatus('online',cloudReadOnlyClient()?'FIREBASE · LECTURA':'FIREBASE')}
 window.addEventListener('online',()=>{if(CLOUD_SYNC_ENABLED&&state.connected&&cloudWriteAllowed())flushOutbox()});
 
 async function migrateANPerformanceExclusion(){
