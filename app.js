@@ -1,4 +1,4 @@
-const VERSION='V3.5.3-C3';
+const VERSION='V3.5.4-A';
 const SCHEMA_VERSION=1;
 const WORKSPACE_ID='lab-psi';
 let CLOUD_SYNC_ENABLED=localStorage.getItem('microbio_cloud_enabled')==='true'; // sesión unificada puede activarla automáticamente tras login válido
@@ -415,6 +415,7 @@ function applyAccessControl(){
     if(first) first.click();
   }
   renderAccessAdmin();
+  const cleanPanel=document.getElementById('productionCleanStartPanel');if(cleanPanel)cleanPanel.hidden=!isAdminUser();
 }
 
 function updateExistingUserAccessNote(){
@@ -744,6 +745,7 @@ function tx(store,mode='readonly'){return db.transaction(store,mode).objectStore
 function idbPut(store,value){return new Promise((res,rej)=>{const r=tx(store,'readwrite').put(value);r.onsuccess=()=>res();r.onerror=()=>rej(r.error)})}
 function idbDelete(store,key){return new Promise((res,rej)=>{const r=tx(store,'readwrite').delete(key);r.onsuccess=()=>res();r.onerror=()=>rej(r.error)})}
 function idbAll(store){return new Promise((res,rej)=>{const r=tx(store).getAll();r.onsuccess=()=>res(r.result||[]);r.onerror=()=>rej(r.error)})}
+function idbClear(store){return new Promise((res,rej)=>{const r=tx(store,'readwrite').clear();r.onsuccess=()=>res();r.onerror=()=>rej(r.error)})}
 
 function ensureStateDomains(){for(const d of DOMAINS)if(!Array.isArray(state[d]))state[d]=[]}
 async function loadLocal(){const all=await idbAll('records');for(const d of DOMAINS)state[d]=all.filter(x=>x.domain===d&&!x.deleted).map(x=>x.data);renderAll()}
@@ -3459,6 +3461,167 @@ $('#firebaseForm')?.addEventListener('submit',e=>{
 });
 if($('#disconnectBtn'))$('#disconnectBtn').onclick=()=>toast('El ERP ya está operando solo en local.');
 
+
+const PRODUCTION_RESET_DOMAINS=Object.freeze([
+  'mediaPrep','mediaQC','mediaRelease','catalogBottles','performanceTasks','performanceTests','performanceLinks',
+  'strainPreparations','strainReactivations','strainCryovialEvents',
+  'microbiologicalControls','microPlateEvents','microActions','monitoringFrequencyDecisions',
+  'coliformQCControls','coliformQCActions',
+  'sampleIntakes','sampleAnalyses','duplicateEvaluations',
+  'productLots','productUsage','productClosures','productTrace',
+  'equipmentControls','equipmentCleaning','equipmentTrace',
+  'environmentalConditions','environmentTrace',
+  'refrigeratorReadings','refrigeratorTrace','refrigerator2Readings','refrigerator2Trace',
+  'incubatorReadings','incubatorVerifications','incubatorTrace',
+  'waterBathReadings','waterBathVerifications','waterBathTrace',
+  'phMeterReadings','phMeterAccuracy','phMeterTrace'
+]);
+let productionCleanStartInProgress=false;
+
+function productionCleanStartStatus(text,mode=''){
+  const el=document.getElementById('productionCleanStartStatus');
+  if(el){el.textContent=text;el.dataset.mode=mode}
+}
+async function verifyCleanStartAdmin(){
+  if(!isAdminUser()){
+    toast('Solo el Administrador puede ejecutar el Inicio Limpio de Producción.');
+    return false;
+  }
+  const user=state.auth?.currentUser;
+  if(!user?.email||!state.authMod){
+    toast('Se requiere una sesión Firebase válida del Administrador.');
+    return false;
+  }
+  const pwd=prompt(`Reautenticación requerida.\nIngrese la contraseña Firebase de ${user.email}:`);
+  if(pwd===null)return false;
+  try{
+    const cred=state.authMod.EmailAuthProvider.credential(user.email,pwd);
+    await state.authMod.reauthenticateWithCredential(user,cred);
+    return true;
+  }catch(err){
+    productionCleanStartStatus('Autorización rechazada: contraseña Firebase incorrecta.','ERROR');
+    toast('No se autorizó el reinicio.');
+    return false;
+  }
+}
+async function deleteCloudDomainForCleanStart(fsMod,fs,domain){
+  const ref=fsMod.collection(fs,'workspaces',WORKSPACE_ID,CLOUD_COLLECTIONS[domain]);
+  const snap=await fsMod.getDocs(ref);
+  let deleted=0;
+  const docs=[...snap.docs];
+  for(let i=0;i<docs.length;i+=20){
+    const chunk=docs.slice(i,i+20);
+    await Promise.all(chunk.map(d=>fsMod.deleteDoc(d.ref)));
+    deleted+=chunk.length;
+  }
+  return deleted;
+}
+async function clearLocalProductionData(){
+  const rows=await idbAll('records');
+  let removed=0;
+  for(const row of rows){
+    if(PRODUCTION_RESET_DOMAINS.includes(row.domain)){
+      await idbDelete('records',row.key);
+      removed++;
+    }
+  }
+  await idbClear('outbox');
+  await idbClear('inbox');
+  await idbClear('conflicts');
+  await idbClear('syncMeta');
+  localStorage.removeItem('microbio_bootstrap_completed_at');
+  localStorage.removeItem('microbio_bootstrap_device');
+  return removed;
+}
+async function executeProductionCleanStart(){
+  if(productionCleanStartInProgress)return;
+  if(!(await verifyCleanStartAdmin()))return;
+
+  const phrase=prompt('Esta acción elimina TODOS los datos operativos de prueba en Firebase y en esta computadora.\n\nPara continuar escriba exactamente:\nINICIAR PRODUCCION');
+  if(phrase!=='INICIAR PRODUCCION'){
+    productionCleanStartStatus('Reinicio cancelado: frase de confirmación incorrecta.','CANCELLED');
+    return;
+  }
+  if(!confirm('Última confirmación: ¿eliminar datos operativos de prueba y dejar el ERP listo para iniciar producción desde cero?'))return;
+
+  const fsMod=state.firebase;
+  const fs=state.firestore;
+  if(!state.connected||!fsMod||!fs){
+    productionCleanStartStatus('Firebase no está conectado. No se ejecutó ningún borrado.','ERROR');
+    toast('Conecte Firebase antes de iniciar el reset.');
+    return;
+  }
+
+  productionCleanStartInProgress=true;
+  const btn=document.getElementById('productionCleanStartBtn');
+  if(btn)btn.disabled=true;
+
+  try{
+    productionCleanStartStatus('Preparando reinicio seguro…','RUNNING');
+
+    // Detener listeners para impedir que datos en tránsito vuelvan a IndexedDB durante la limpieza.
+    state.listeners?.forEach(fn=>{try{fn()}catch{}});
+    state.listeners=[];
+
+    let cloudDeleted=0;
+    const errors=[];
+    for(let i=0;i<PRODUCTION_RESET_DOMAINS.length;i++){
+      const domain=PRODUCTION_RESET_DOMAINS[i];
+      productionCleanStartStatus(`Firebase: limpiando ${i+1}/${PRODUCTION_RESET_DOMAINS.length} · ${domain}…`,'RUNNING');
+      try{
+        cloudDeleted+=await deleteCloudDomainForCleanStart(fsMod,fs,domain);
+      }catch(err){
+        errors.push({domain,message:String(err?.message||err)});
+      }
+    }
+
+    if(errors.length){
+      productionCleanStartStatus(`Reinicio detenido: ${errors.length} dominio(s) no pudieron limpiarse. No se limpió la base local. Revise consola.`,'ERROR');
+      console.error('Production Clean Start errors',errors);
+      await startCloudListeners(fsMod,fs);
+      return;
+    }
+
+    productionCleanStartStatus('Firebase limpio. Limpiando datos operativos locales…','RUNNING');
+    const localDeleted=await clearLocalProductionData();
+
+    await loadLocal();
+    renderAll();
+
+    // Registrar el inicio oficial en auditoría (la auditoría se conserva).
+    await centralAuditEvent({
+      action:'PRODUCTION_CLEAN_START',
+      module:'Administración',
+      domain:'system',
+      entityId:'production-clean-start',
+      recordLabel:'Inicio limpio de producción',
+      details:{
+        summary:`Inicio limpio completado · cloud ${cloudDeleted} · local ${localDeleted}`,
+        cloudDeleted,
+        localDeleted,
+        preserved:'Authentication, erpDirectory, permisos, catálogos maestros, configuraciones, criterios y auditLog'
+      }
+    });
+    if(state.connected&&cloudWriteAllowed())await flushOutbox();
+
+    await startCloudListeners(fsMod,fs);
+    setSyncStatus('online','FIREBASE');
+    productionCleanStartStatus(`COMPLETADO · ${cloudDeleted} registro(s) cloud y ${localDeleted} registro(s) locales eliminados. El ERP está listo para iniciar producción.`,'DONE');
+    toast('Inicio limpio de producción completado.');
+  }catch(err){
+    console.error('Production Clean Start',err);
+    productionCleanStartStatus('Error durante el reinicio: '+String(err?.message||err),'ERROR');
+    try{await startCloudListeners(state.firebase,state.firestore)}catch{}
+  }finally{
+    productionCleanStartInProgress=false;
+    if(btn)btn.disabled=false;
+  }
+}
+function bindProductionCleanStart(){
+  const panel=document.getElementById('productionCleanStartPanel');
+  if(panel)panel.hidden=!isAdminUser();
+  document.getElementById('productionCleanStartBtn')?.addEventListener('click',executeProductionCleanStart);
+}
 const BOOTSTRAP_OPERATIONAL_DOMAINS=Object.freeze([
   'mediaPrep','mediaQC','mediaRelease','performanceTasks','performanceTests','performanceLinks',
   'strainPreparations','strainReactivations','strainCryovialEvents',
@@ -3484,6 +3647,7 @@ function bootstrapStatus(text,mode=''){
 let backgroundBootstrapPromise=null;
 
 async function writeBootstrapRemoteRecordFast(domain,data,recordMap){
+  if(productionCleanStartInProgress)return 0;
   if(!data?.id)return 0;
   const key=`${domain}:${data.id}`;
   const current=recordMap.get(key)?.data;
@@ -3567,6 +3731,7 @@ async function bootstrapNewPcFromCloudFast(fsMod,fs){
 }
 
 function startBackgroundBootstrap(fsMod,fs){
+  if(productionCleanStartInProgress)return Promise.resolve({bootstrapped:false,reason:'CLEAN_START',received:0,errors:[]});
   if(backgroundBootstrapPromise)return backgroundBootstrapPromise;
   backgroundBootstrapPromise=bootstrapNewPcFromCloudFast(fsMod,fs)
     .catch(err=>{
@@ -3583,7 +3748,7 @@ async function startCloudListeners(fsMod,fs){
   for(const domain of DOMAINS){
     const ref=fsMod.collection(fs,'workspaces',WORKSPACE_ID,CLOUD_COLLECTIONS[domain]);
     const unsub=fsMod.onSnapshot(ref,snap=>snap.docChanges().forEach(ch=>{
-      if(ch.type!=='removed')saveRemote(domain,ch.doc.data());
+      if(!productionCleanStartInProgress&&ch.type!=='removed')saveRemote(domain,ch.doc.data());
     }),err=>{
       if($('#firebaseStatus'))$('#firebaseStatus').textContent='Listener: '+err.message;
     });
@@ -3872,7 +4037,7 @@ function bindCloudAdminControls(){
 }
 showSecureLogin('Ingrese sus credenciales.');
 bootstrapProductionFirebaseConfig();
-async function boot(){db=await openDB();$('#deviceId').textContent=deviceId;await seed();await migrate();await loadLocal();await dedupeIntegratedBottleMirrors();await loadLocal();ensureStateDomains();await seedEquipmentCatalog();await migrateAutoclaveCleaningFrequencyV342G();await seedEnvironmentConfig();await seedRefrigeratorConfig();await seedRefrigerator2Config();await seedIncubatorConfig();await seedWaterBathConfig();await seedPhMeterConfig();await migrateIncubatorScheduleWorkdays();ensureStateDomains();for(const lot of state.productLots.filter(l=>productLotStatus(l)==='APTO'))await syncProductLotToERP(lot);await dedupeIntegratedBottleMirrors();await loadLocal();await migrateMonitoringFrequenciesV220();await loadLocal();await migrateANPerformanceExclusion();await loadLocal();await reconcileExhaustedPlateLots();await loadLocal();await migrateSurfaceSwabLimitsD2();for(const p of state.mediaPrep.filter(x=>performanceRequiredForPrep(x)&&!performanceTaskForPrep(x.id)&&bottleById(x.bottleId)?.qualificationStatus!=='CALIFICADO'))await createPerformanceTaskForPrep(p);await loadLocal();renderSelects();bindAccessControl();bindRealPermissionGuards();bindCloudAdminControls();bindFirebaseAuthControls();bindSecureLogin();bindUserDirectoryControls();bindCentralAudit();bindDeletionSecurityGuard();bindMicroPlanner();bindSampleModule();bindProductModule();bindEquipmentModule();bindEnvironmentModule();bindRefrigeratorModule();bindRefrigerator2Module();bindIncubatorModule();bindWaterBathModule();bindControlChartHub();bindPhMeterModule();activateMicroTab('catalog');resetPrep();resetQC();resetStrainPrep();resetReactivation();applyAccessControl();adminAccessSafetyCheck();fillFirebaseForm();applyFirebaseConfigAccess();await initFirebaseAuthOnly();await updateOutbox();if(CLOUD_SYNC_ENABLED){const cfg=getFirebaseConfig();if($('#firebaseStatus'))$('#firebaseStatus').textContent=`Conectando · workspace ${WORKSPACE_ID} · schema v${SCHEMA_VERSION}.`;await connectFirebase(cfg)}else{setSyncStatus('offline','LOCAL');if($('#firebaseStatus'))$('#firebaseStatus').textContent=`Cloud Foundation definida · workspace ${WORKSPACE_ID} · schema v${SCHEMA_VERSION} · sincronización desactivada.`}}
+async function boot(){db=await openDB();$('#deviceId').textContent=deviceId;await seed();await migrate();await loadLocal();await dedupeIntegratedBottleMirrors();await loadLocal();ensureStateDomains();await seedEquipmentCatalog();await migrateAutoclaveCleaningFrequencyV342G();await seedEnvironmentConfig();await seedRefrigeratorConfig();await seedRefrigerator2Config();await seedIncubatorConfig();await seedWaterBathConfig();await seedPhMeterConfig();await migrateIncubatorScheduleWorkdays();ensureStateDomains();for(const lot of state.productLots.filter(l=>productLotStatus(l)==='APTO'))await syncProductLotToERP(lot);await dedupeIntegratedBottleMirrors();await loadLocal();await migrateMonitoringFrequenciesV220();await loadLocal();await migrateANPerformanceExclusion();await loadLocal();await reconcileExhaustedPlateLots();await loadLocal();await migrateSurfaceSwabLimitsD2();for(const p of state.mediaPrep.filter(x=>performanceRequiredForPrep(x)&&!performanceTaskForPrep(x.id)&&bottleById(x.bottleId)?.qualificationStatus!=='CALIFICADO'))await createPerformanceTaskForPrep(p);await loadLocal();renderSelects();bindAccessControl();bindRealPermissionGuards();bindCloudAdminControls();bindFirebaseAuthControls();bindSecureLogin();bindUserDirectoryControls();bindCentralAudit();bindDeletionSecurityGuard();bindProductionCleanStart();bindMicroPlanner();bindSampleModule();bindProductModule();bindEquipmentModule();bindEnvironmentModule();bindRefrigeratorModule();bindRefrigerator2Module();bindIncubatorModule();bindWaterBathModule();bindControlChartHub();bindPhMeterModule();activateMicroTab('catalog');resetPrep();resetQC();resetStrainPrep();resetReactivation();applyAccessControl();adminAccessSafetyCheck();fillFirebaseForm();applyFirebaseConfigAccess();await initFirebaseAuthOnly();await updateOutbox();if(CLOUD_SYNC_ENABLED){const cfg=getFirebaseConfig();if($('#firebaseStatus'))$('#firebaseStatus').textContent=`Conectando · workspace ${WORKSPACE_ID} · schema v${SCHEMA_VERSION}.`;await connectFirebase(cfg)}else{setSyncStatus('offline','LOCAL');if($('#firebaseStatus'))$('#firebaseStatus').textContent=`Cloud Foundation definida · workspace ${WORKSPACE_ID} · schema v${SCHEMA_VERSION} · sincronización desactivada.`}}
 boot().catch(err=>{console.error(err);toast('Error de arranque: '+err.message)});
 
 if(document.readyState==='loading'){

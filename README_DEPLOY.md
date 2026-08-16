@@ -1,22 +1,43 @@
-# MICROBIOLOGÍA ERP V3.5.3-C3 — Session Login/Logout Fix
+# MICROBIOLOGÍA ERP V3.5.4-A — Production Clean Start
 
-Correcciones:
-- Firebase Authentication usa `browserSessionPersistence`, no persistencia permanente.
-- Al cerrar el navegador/sesión del navegador, el ERP vuelve a pedir correo y contraseña.
-- La primera ejecución C3 elimina una sesión antigua restaurada desde `browserLocalPersistence`.
-- El botón **Cerrar sesión** ya no depende de que termine la sincronización cloud.
-- La auditoría de cierre se guarda localmente primero.
-- El envío cloud durante logout tiene un máximo aproximado de 1,2 s y después continúa el cierre.
-- Se limpia la identidad ERP activa y vuelve inmediatamente a la pantalla de acceso.
-- El cierre automático por 30 minutos utiliza el mismo mecanismo fiable.
-- Se conserva Fast Production Bootstrap de C2, permisos, auditoría y Firebase Bootstrap de C1.
+Base exacta: V3.5.3-C3.
 
-## Actualización Netlify
-Reemplace en GitHub los archivos de la C2 por los de esta C3 y espere el deploy automático de Netlify.
+## Objetivo
+Dejar el ERP listo para comenzar el uso oficial desde cero sin destruir la infraestructura ya estabilizada.
 
-Prueba:
-1. Abrir la web.
-2. Debe pedir credenciales.
-3. Iniciar sesión.
-4. Pulsar Cerrar sesión: debe volver al login.
-5. Cerrar la ventana/navegador y abrir de nuevo: debe pedir credenciales nuevamente.
+## Qué SE CONSERVA
+- Firebase Authentication y usuarios.
+- `erpDirectory` / perfiles cloud.
+- Roles y permisos.
+- Configuración Firebase.
+- Catálogos maestros.
+- Catálogo de personal.
+- Criterios y versiones.
+- Catálogos de equipos, medios, microorganismos y puntos.
+- Configuraciones de equipos/ambiente.
+- Historial `auditLog` y motor de auditoría.
+- Arquitectura Multi-PC, Netlify y seguridad.
+
+## Qué SE ELIMINA
+Datos operativos de prueba:
+- Muestras, análisis y duplicados.
+- Lotes/uso/cierre/trazabilidad operativa de productos.
+- Preparaciones, QC, liberaciones, lotes de frascos y rendimiento.
+- Preparaciones/reactivaciones/eventos de crioviales.
+- Controles microbiológicos y QC de muestras.
+- Controles, limpiezas, lecturas e históricos operativos de equipos/áreas.
+- Outbox, inbox, conflictos y metadatos de sincronización de la computadora que ejecuta el reset.
+
+## Seguridad del reset
+Solo Administrador:
+1. Reautenticación con contraseña Firebase.
+2. Frase exacta `INICIAR PRODUCCION`.
+3. Confirmación final.
+4. Primero limpia Firebase.
+5. Solo si Firebase termina sin errores, limpia la base local.
+6. Registra `PRODUCTION_CLEAN_START` en auditoría.
+
+## Uso
+Administración → Inicio limpio de producción → Reiniciar datos operativos para producción.
+
+Ejecutar una sola vez antes del inicio oficial.

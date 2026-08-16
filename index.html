@@ -3,13 +3,13 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Microbiología ERP V3.5.3-C3</title>
-  <link rel="stylesheet" href="styles.css?v=V352A2" />
+  <title>Microbiología ERP V3.5.4-A</title>
+  <link rel="stylesheet" href="styles.css?v=V354A" />
   <link rel="icon" href="data:,">
 </head>
 <body>
 <header class="topbar">
-  <div><h1>Microbiología ERP</h1><div class="version" id="appVersionLabel">V3.5.3-C3 · Session Login/Logout Fix · Local-First</div></div>
+  <div><h1>Microbiología ERP</h1><div class="version" id="appVersionLabel">V3.5.4-A · Production Clean Start · Local-First</div></div>
   <div class="top-actions">
     <div class="session-user secure-session"><span>Usuario:</span> <b id="secureActiveUser">—</b></div><div id="activeRoleBadge" class="badge role-badge">—</div><button id="secureLogoutBtn" type="button" class="header-logout" aria-label="Cerrar sesión">Cerrar sesión</button>
     <div id="syncBadge" class="badge offline">LOCAL</div>
@@ -1543,7 +1543,21 @@
         </div>
         <p class="hint" id="cloudModeHint">Inicio de sesión único: Authentication y Firebase Multi-PC se conectan automáticamente como una sola sesión.</p><div class="statusbox" id="firebaseStatus">Firebase definido · autenticación requerida · sincronización desactivada.</div><div class="statusbox">Workspace: <code>lab-psi</code> · Schema: <code>1</code> · Local source of truth: <b>IndexedDB</b></div></div>
 
-      <div class="panel" id="centralAuditPanel">
+      
+      <div class="panel production-clean-start-panel" id="productionCleanStartPanel">
+        <h3>8. Inicio limpio de producción</h3>
+        <div class="statusbox danger-note">
+          <b>Uso único antes del inicio oficial.</b> Elimina de Firebase y de esta computadora todos los registros operativos de prueba, pero conserva usuarios, Authentication, permisos, catálogos maestros, configuraciones, criterios y el historial de auditoría.
+        </div>
+        <p class="hint">
+          Se reinician muestras, lotes y trazabilidad operativa, preparaciones/QC/liberaciones, rendimiento, cepas preparadas/reactivaciones, controles microbiológicos, controles de equipos/áreas y sus históricos operativos. También se limpian outbox/inbox/conflictos y metadatos de sincronización de esta computadora.
+        </p>
+        <div class="actions">
+          <button type="button" class="danger-action" id="productionCleanStartBtn">Reiniciar datos operativos para producción</button>
+        </div>
+        <div class="statusbox" id="productionCleanStartStatus">Estado: no ejecutado.</div>
+      </div>
+<div class="panel" id="centralAuditPanel">
         <div class="audit-head">
           <div>
             <h3>8. Auditoría central de usuarios y cambios</h3>
@@ -1566,7 +1580,7 @@
               <option>LOGOUT_INACTIVITY</option>
               <option>CREATE</option>
               <option>EDIT</option>
-              <option>DELETE</option><option>DELETE_DENIED</option><option>DELETE_AUTHORIZED</option><option>PERMISSIONS_CHANGE</option><option>USER_DIRECTORY_PUBLISH</option>
+              <option>DELETE</option><option>DELETE_DENIED</option><option>DELETE_AUTHORIZED</option><option>PERMISSIONS_CHANGE</option><option>USER_DIRECTORY_PUBLISH</option><option>PRODUCTION_CLEAN_START</option>
               <option>LIBERAR</option>
               <option>CERRAR</option>
             </select>
@@ -1598,6 +1612,6 @@
 <div id="lotModal" class="modal" aria-hidden="true"><div class="modal-card"><button id="closeLotModal" class="modal-close">×</button><div id="lotModalContent"></div></div></div>
 <div id="sampleTraceModal" class="modal" aria-hidden="true"><div class="modal-card sample-trace-modal-card"><button id="closeSampleTraceModal" class="modal-close">×</button><div id="sampleTraceModalContent"></div></div></div>
 <div id="toast" class="toast"></div>
-<script type="module" src="app.js?v=V353C3"></script>
+<script type="module" src="app.js?v=V354A"></script>
 </body>
 </html>

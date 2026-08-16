@@ -293,3 +293,10 @@ body.secure-locked .layout,body.secure-locked .topbar{filter:blur(1px);pointer-e
 
 /* V3.5.3-B — Auditoría administrativa y seguridad */
 .security-admin-note{margin:10px 0;border-left:4px solid #9a6700}
+
+/* V3.5.4-A — Production Clean Start */
+.production-clean-start-panel{border-left:4px solid #a33}
+.production-clean-start-panel .danger-note{border-left:4px solid #a33;background:#fff7f7}
+.danger-action{font-weight:700;border-color:#a33}
+#productionCleanStartStatus[data-mode="DONE"]{border-left:4px solid #197a5b}
+#productionCleanStartStatus[data-mode="ERROR"]{border-left:4px solid #a33}
