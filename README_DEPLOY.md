@@ -1,43 +1,21 @@
-# MICROBIOLOGÍA ERP V3.5.4-A — Production Clean Start
+# MICROBIOLOGÍA ERP V3.5.4-A1 — Sync State Fix
 
-Base exacta: V3.5.3-C3.
+Corrección puntual sobre V3.5.4-A.
 
-## Objetivo
-Dejar el ERP listo para comenzar el uso oficial desde cero sin destruir la infraestructura ya estabilizada.
+Problema corregido:
+- El login principal y `onAuthStateChanged` podían terminar en distinto orden.
+- Firestore alcanzaba estado `FIREBASE`, pero al finalizar `secureLoginSubmit()` se volvía a ejecutar `markAuthenticatedState()`.
+- Ese último llamado cambiaba nuevamente la cabecera a `SINCRONIZANDO` aunque Firebase ya estuviera conectado.
 
-## Qué SE CONSERVA
-- Firebase Authentication y usuarios.
-- `erpDirectory` / perfiles cloud.
-- Roles y permisos.
-- Configuración Firebase.
-- Catálogos maestros.
-- Catálogo de personal.
-- Criterios y versiones.
-- Catálogos de equipos, medios, microorganismos y puntos.
-- Configuraciones de equipos/ambiente.
-- Historial `auditLog` y motor de auditoría.
-- Arquitectura Multi-PC, Netlify y seguridad.
+Corrección:
+- `onAuthStateChanged` queda como único responsable de iniciar/conectar Firestore.
+- `secureLoginSubmit` ya no degrada el estado después de una conexión correcta.
+- `markAuthenticatedState()` es idempotente: si `state.connected === true`, mantiene `FIREBASE`.
+- No se modifica el motor Multi-PC, bootstrap, datos, permisos, auditoría ni Production Clean Start.
 
-## Qué SE ELIMINA
-Datos operativos de prueba:
-- Muestras, análisis y duplicados.
-- Lotes/uso/cierre/trazabilidad operativa de productos.
-- Preparaciones, QC, liberaciones, lotes de frascos y rendimiento.
-- Preparaciones/reactivaciones/eventos de crioviales.
-- Controles microbiológicos y QC de muestras.
-- Controles, limpiezas, lecturas e históricos operativos de equipos/áreas.
-- Outbox, inbox, conflictos y metadatos de sincronización de la computadora que ejecuta el reset.
-
-## Seguridad del reset
-Solo Administrador:
-1. Reautenticación con contraseña Firebase.
-2. Frase exacta `INICIAR PRODUCCION`.
-3. Confirmación final.
-4. Primero limpia Firebase.
-5. Solo si Firebase termina sin errores, limpia la base local.
-6. Registra `PRODUCTION_CLEAN_START` en auditoría.
-
-## Uso
-Administración → Inicio limpio de producción → Reiniciar datos operativos para producción.
-
-Ejecutar una sola vez antes del inicio oficial.
+Prueba:
+1. Abrir Netlify.
+2. Iniciar sesión.
+3. Debe pasar brevemente por `SINCRONIZANDO`.
+4. Luego debe quedar en `FIREBASE`.
+5. Entrar en Administración y ejecutar Inicio Limpio de Producción solo cuando la cabecera indique `FIREBASE`.

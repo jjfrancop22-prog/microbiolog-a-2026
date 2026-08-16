@@ -1,4 +1,4 @@
-const VERSION='V3.5.4-A';
+const VERSION='V3.5.4-A1';
 const SCHEMA_VERSION=1;
 const WORKSPACE_ID='lab-psi';
 let CLOUD_SYNC_ENABLED=localStorage.getItem('microbio_cloud_enabled')==='true'; // sesión unificada puede activarla automáticamente tras login válido
@@ -271,7 +271,11 @@ function markAuthenticatedState(){
     setSyncStatus('offline','LOCAL');
     return;
   }
-  // AUTH solo debe ser un estado transitorio; una sesión válida pasa enseguida a SINCRONIZANDO.
+  if(state.connected){
+    setSyncStatus('online',cloudReadOnlyClient()?'FIREBASE · LECTURA':'FIREBASE');
+    updateFirebaseAuthForm();
+    return;
+  }
   setSyncStatus('syncing','SINCRONIZANDO');
   updateFirebaseAuthForm();
 }
@@ -323,7 +327,11 @@ async function secureLoginSubmit(e){
     resetSessionInactivityTimer();
     secureLoginStatus(`Sesión iniciada como ${identity.code}.`,'OK');console.info('ERP identity source:',identity.identitySource||'UNKNOWN');await centralAuditEvent({action:'LOGIN',module:'Seguridad',domain:'session',entityId:cred.user.uid,recordLabel:identity.code,userCode:identity.code,email:cred.user.email,uid:cred.user.uid,details:{summary:'Inicio de sesión',role:identity.role,identitySource:identity.identitySource||'UNKNOWN'}});
 
-    markAuthenticatedState();
+    // El observador onAuthStateChanged es el único responsable de conectar Firestore.
+    // No volver a colocar SINCRONIZANDO aquí: podría sobrescribir FIREBASE después de una conexión correcta.
+    if(state.connected){
+      setSyncStatus('online',cloudReadOnlyClient()?'FIREBASE · LECTURA':'FIREBASE');
+    }
   }catch(err){
     secureLoginStatus('No se pudo iniciar sesión. Verifique correo y contraseña.','ERROR');
   }
