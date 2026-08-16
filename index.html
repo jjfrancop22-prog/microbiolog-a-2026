@@ -3,12 +3,13 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Microbiología ERP V3.5.3-C</title>
+  <title>Microbiología ERP V3.5.3-C1</title>
   <link rel="stylesheet" href="styles.css?v=V352A2" />
+  <link rel="icon" href="data:,">
 </head>
 <body>
 <header class="topbar">
-  <div><h1>Microbiología ERP</h1><div class="version" id="appVersionLabel">V3.5.3-C · Production Security & Deployment Ready · Local-First</div></div>
+  <div><h1>Microbiología ERP</h1><div class="version" id="appVersionLabel">V3.5.3-C1 · Production Firebase Bootstrap Fix · Local-First</div></div>
   <div class="top-actions">
     <div class="session-user secure-session"><span>Usuario:</span> <b id="secureActiveUser">—</b></div><div id="activeRoleBadge" class="badge role-badge">—</div><button id="secureLogoutBtn" type="button" class="header-logout">Cerrar sesión</button>
     <div id="syncBadge" class="badge offline">LOCAL</div>
@@ -1526,7 +1527,7 @@
       </div>
       <div class="panel"><h3>6. Personal autorizado</h3><form id="personCatalogForm" class="inline-form"><input type="hidden" name="id"><input name="code" placeholder="Código" required><input name="name" placeholder="Nombre / descripción"><button class="primary" type="submit">Guardar</button></form><div class="table-wrap"><table class="small-table"><thead><tr><th>Código</th><th>Nombre</th><th></th></tr></thead><tbody id="personCatalogRows"></tbody></table></div></div>
       <div class="panel"><h3>7. Parámetros del sistema</h3><form id="systemConfigForm" class="form-grid compact-form"><label>Esterilidad (días)<input name="sterilityDays" value="0" readonly></label><label>Macroscópico (días)<input name="macroscopicDays" type="number" min="0" required></label><label>Rendimiento programado (días)<input name="performanceDays" type="number" min="0" required></label><label>Alerta antes de vencer (días)<input name="alertDays" type="number" min="0" required></label><div class="wide actions"><button class="primary" type="submit">Guardar parámetros</button></div></form></div>
-      <div class="panel"><h3>Cloud Foundation · Firebase Authentication + Firestore</h3><p class="hint">Local-First: IndexedDB continúa siendo la base local. Firebase replica únicamente después de autenticación válida y reglas seguras.</p><form id="firebaseForm" class="form-grid"><label>API key<input name="apiKey"></label><label>Auth domain<input name="authDomain"></label><label>Project ID<input name="projectId"></label><label>Storage bucket<input name="storageBucket"></label><label>Messaging sender ID<input name="messagingSenderId"></label><label>App ID<input name="appId"></label><div class="wide actions"><button type="button" id="disconnectBtn">Modo local activo</button></div><div class="actions" style="margin-top:10px"><button type="submit">Guardar configuración Firebase</button></div></form>
+      <div class="panel"><h3>Cloud Foundation · Firebase Authentication + Firestore</h3><div class="statusbox"><b>Producción:</b> Firebase de producción precargado automáticamente para Netlify/GitHub.</div><p class="hint">Local-First: IndexedDB continúa siendo la base local. Firebase replica únicamente después de autenticación válida y reglas seguras.</p><form id="firebaseForm" class="form-grid"><label>API key<input name="apiKey"></label><label>Auth domain<input name="authDomain"></label><label>Project ID<input name="projectId"></label><label>Storage bucket<input name="storageBucket"></label><label>Messaging sender ID<input name="messagingSenderId"></label><label>App ID<input name="appId"></label><div class="wide actions"><button type="button" id="disconnectBtn">Modo local activo</button></div><div class="actions" style="margin-top:10px"><button type="submit">Guardar configuración Firebase</button></div></form>
         <div class="firebase-auth-box unified-auth-box">
           <h4>Sesión Firebase unificada</h4>
           <div class="form-grid compact-form">
@@ -1597,6 +1598,6 @@
 <div id="lotModal" class="modal" aria-hidden="true"><div class="modal-card"><button id="closeLotModal" class="modal-close">×</button><div id="lotModalContent"></div></div></div>
 <div id="sampleTraceModal" class="modal" aria-hidden="true"><div class="modal-card sample-trace-modal-card"><button id="closeSampleTraceModal" class="modal-close">×</button><div id="sampleTraceModalContent"></div></div></div>
 <div id="toast" class="toast"></div>
-<script type="module" src="app.js?v=V353C"></script>
+<script type="module" src="app.js?v=V353C1"></script>
 </body>
 </html>

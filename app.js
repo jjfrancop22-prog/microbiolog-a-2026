@@ -1,4 +1,4 @@
-const VERSION='V3.5.3-C';
+const VERSION='V3.5.3-C1';
 const SCHEMA_VERSION=1;
 const WORKSPACE_ID='lab-psi';
 let CLOUD_SYNC_ENABLED=localStorage.getItem('microbio_cloud_enabled')==='true'; // sesión unificada puede activarla automáticamente tras login válido
@@ -3376,7 +3376,25 @@ $$('.tab').forEach(b=>b.onclick=()=>{$$('.tab').forEach(x=>x.classList.remove('a
 
 async function updateOutbox(){const rows=await idbAll('outbox');$('#outboxCount').textContent=rows.length}
 function setSyncStatus(mode,text){const b=$('#syncBadge');b.className=`badge ${mode}`;b.textContent=text}
-function getFirebaseConfig(){try{return JSON.parse(localStorage.getItem('microbio_firebase_config')||'null')}catch{return null}}
+
+const PRODUCTION_FIREBASE_CONFIG=Object.freeze({
+  apiKey:"AIzaSyA7vTtwpvrpswgN4WX6Dy-oqDA0zYCdrL8",
+  authDomain:"laboratorio-kardex.firebaseapp.com",
+  projectId:"laboratorio-kardex",
+  storageBucket:"laboratorio-kardex.firebasestorage.app",
+  messagingSenderId:"975014282931",
+  appId:"1:975014282931:web:c553bae0a23be87c5892c6"
+});
+function bootstrapProductionFirebaseConfig(){
+  let current=null;
+  try{current=JSON.parse(localStorage.getItem('microbio_firebase_config')||'null')}catch{}
+  if(!current?.apiKey||!current?.authDomain||!current?.projectId||!current?.appId){
+    localStorage.setItem('microbio_firebase_config',JSON.stringify(PRODUCTION_FIREBASE_CONFIG));
+    return PRODUCTION_FIREBASE_CONFIG;
+  }
+  return current;
+}
+function getFirebaseConfig(){try{return JSON.parse(localStorage.getItem('microbio_firebase_config')||'null')||PRODUCTION_FIREBASE_CONFIG}catch{return PRODUCTION_FIREBASE_CONFIG}}
 
 function applyFirebaseConfigAccess(){
   const form=document.getElementById('firebaseForm');if(!form)return;
@@ -3752,6 +3770,7 @@ function bindCloudAdminControls(){
   if(hint)hint.textContent='Sesión única: iniciar sesión en el ERP autentica y conecta Firebase automáticamente.';
 }
 showSecureLogin('Ingrese sus credenciales.');
+bootstrapProductionFirebaseConfig();
 async function boot(){db=await openDB();$('#deviceId').textContent=deviceId;await seed();await migrate();await loadLocal();await dedupeIntegratedBottleMirrors();await loadLocal();ensureStateDomains();await seedEquipmentCatalog();await migrateAutoclaveCleaningFrequencyV342G();await seedEnvironmentConfig();await seedRefrigeratorConfig();await seedRefrigerator2Config();await seedIncubatorConfig();await seedWaterBathConfig();await seedPhMeterConfig();await migrateIncubatorScheduleWorkdays();ensureStateDomains();for(const lot of state.productLots.filter(l=>productLotStatus(l)==='APTO'))await syncProductLotToERP(lot);await dedupeIntegratedBottleMirrors();await loadLocal();await migrateMonitoringFrequenciesV220();await loadLocal();await migrateANPerformanceExclusion();await loadLocal();await reconcileExhaustedPlateLots();await loadLocal();await migrateSurfaceSwabLimitsD2();for(const p of state.mediaPrep.filter(x=>performanceRequiredForPrep(x)&&!performanceTaskForPrep(x.id)&&bottleById(x.bottleId)?.qualificationStatus!=='CALIFICADO'))await createPerformanceTaskForPrep(p);await loadLocal();renderSelects();bindAccessControl();bindRealPermissionGuards();bindCloudAdminControls();bindFirebaseAuthControls();bindSecureLogin();bindUserDirectoryControls();bindCentralAudit();bindDeletionSecurityGuard();bindMicroPlanner();bindSampleModule();bindProductModule();bindEquipmentModule();bindEnvironmentModule();bindRefrigeratorModule();bindRefrigerator2Module();bindIncubatorModule();bindWaterBathModule();bindControlChartHub();bindPhMeterModule();activateMicroTab('catalog');resetPrep();resetQC();resetStrainPrep();resetReactivation();applyAccessControl();adminAccessSafetyCheck();fillFirebaseForm();applyFirebaseConfigAccess();await initFirebaseAuthOnly();await updateOutbox();if(CLOUD_SYNC_ENABLED){const cfg=getFirebaseConfig();if($('#firebaseStatus'))$('#firebaseStatus').textContent=`Conectando · workspace ${WORKSPACE_ID} · schema v${SCHEMA_VERSION}.`;await connectFirebase(cfg)}else{setSyncStatus('offline','LOCAL');if($('#firebaseStatus'))$('#firebaseStatus').textContent=`Cloud Foundation definida · workspace ${WORKSPACE_ID} · schema v${SCHEMA_VERSION} · sincronización desactivada.`}}
 boot().catch(err=>{console.error(err);toast('Error de arranque: '+err.message)});
 
