@@ -1,4 +1,4 @@
-const VERSION='V3.5.3-C2';
+const VERSION='V3.5.3-C3';
 const SCHEMA_VERSION=1;
 const WORKSPACE_ID='lab-psi';
 let CLOUD_SYNC_ENABLED=localStorage.getItem('microbio_cloud_enabled')==='true'; // sesión unificada puede activarla automáticamente tras login válido
@@ -58,9 +58,12 @@ function resetSessionInactivityTimer(){if(!state.auth?.currentUser)return;if(ses
 function bindSessionActivityMonitor(){['click','keydown','input','change','pointerdown','touchstart'].forEach(ev=>document.addEventListener(ev,()=>{if(document.body.classList.contains('secure-locked'))return;resetSessionInactivityTimer()},{passive:true}))}
 async function secureSessionLogout(message='Sesión cerrada.'){
   if(sessionInactivityTimer){clearTimeout(sessionInactivityTimer);sessionInactivityTimer=null}
+
   const fb=state.auth?.currentUser;
   const code=activeUser();
   const inactivity=String(message||'').toLowerCase().includes('inactividad');
+
+  // Registrar localmente antes de cerrar. El cierre NO depende de que Firebase responda.
   if(fb){
     try{
       await centralAuditEvent({
@@ -75,19 +78,49 @@ async function secureSessionLogout(message='Sesión cerrada.'){
         reason:message,
         details:{summary:inactivity?'Cierre automático por inactividad':'Cierre de sesión manual'}
       });
-      if(state.connected&&cloudWriteAllowed())await flushOutbox();
+    }catch(err){console.warn('Auditoría de cierre local',err)}
+  }
+
+  // Intento breve de enviar pendientes, sin bloquear el cierre.
+  if(state.connected&&cloudWriteAllowed()){
+    try{
+      await Promise.race([
+        flushOutbox(),
+        new Promise(resolve=>setTimeout(resolve,1200))
+      ]);
     }catch{}
   }
-  try{if(state.auth&&state.authMod)await state.authMod.signOut(state.auth)}catch{}
+
+  // Cerrar Authentication inmediatamente.
+  try{
+    if(state.auth&&state.authMod)await state.authMod.signOut(state.auth);
+  }catch(err){
+    console.warn('Firebase signOut',err);
+  }
+
   CLOUD_SYNC_ENABLED=false;
   localStorage.setItem('microbio_cloud_enabled','false');
   state.connected=false;
+
   state.listeners?.forEach(fn=>{try{fn()}catch{}});
   state.listeners=[];
+
   setSyncStatus('offline','LOCAL');
-  const userEl=document.getElementById('secureActiveUser');if(userEl)userEl.textContent='—';
-  const roleEl=document.getElementById('activeRoleBadge');if(roleEl){roleEl.textContent='—';roleEl.className='badge role-badge'}
-  showSecureLogin(message)
+  updateFirebaseAuthForm();
+
+  const userEl=document.getElementById('secureActiveUser');
+  if(userEl)userEl.textContent='—';
+  const roleEl=document.getElementById('activeRoleBadge');
+  if(roleEl){roleEl.textContent='—';roleEl.className='badge role-badge'}
+
+  // Limpiar identidad activa de sesión para que no reaparezca visualmente.
+  localStorage.removeItem('microbio_active_user');
+
+  showSecureLogin(message);
+  const emailInput=document.getElementById('secureLoginEmail');
+  const passwordInput=document.getElementById('secureLoginPassword');
+  if(passwordInput)passwordInput.value='';
+  if(emailInput)emailInput.focus();
 }
 
 
@@ -3594,6 +3627,16 @@ async function ensureFirebaseAuthMatchesActiveUser(){
   return true;
 }
 
+
+const SESSION_POLICY_KEY='microbio_session_policy_v353c3';
+async function enforceProductionSessionPolicy(auth,authMod){
+  if(sessionStorage.getItem(SESSION_POLICY_KEY)==='ok')return;
+  // Si existe una sesión restaurada desde la antigua persistencia LOCAL, cerrarla una sola vez.
+  if(auth.currentUser){
+    try{await authMod.signOut(auth)}catch{}
+  }
+  sessionStorage.setItem(SESSION_POLICY_KEY,'ok');
+}
 async function initFirebaseAuthOnly(){
   const cfg=getFirebaseConfig();
   if(!cfg?.apiKey||!cfg?.projectId||!cfg?.appId){
@@ -3611,7 +3654,8 @@ async function initFirebaseAuthOnly(){
     const authMod=await import('https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js');
     const fbApp=appMod.getApps().length?appMod.getApp():appMod.initializeApp(cfg);
     const auth=authMod.getAuth(fbApp);
-    await authMod.setPersistence(auth,authMod.browserLocalPersistence);
+    await authMod.setPersistence(auth,authMod.browserSessionPersistence);
+    await enforceProductionSessionPolicy(auth,authMod);
     state.authMod=authMod;
     state.auth=auth;
     if(state.authUnsub)try{state.authUnsub()}catch{}

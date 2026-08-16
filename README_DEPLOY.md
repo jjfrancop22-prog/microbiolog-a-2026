@@ -1,24 +1,22 @@
-# MICROBIOLOGÍA ERP V3.5.3-C2 — Fast Production Bootstrap
+# MICROBIOLOGÍA ERP V3.5.3-C3 — Session Login/Logout Fix
 
-Corrección para el primer acceso en Netlify / navegador nuevo:
+Correcciones:
+- Firebase Authentication usa `browserSessionPersistence`, no persistencia permanente.
+- Al cerrar el navegador/sesión del navegador, el ERP vuelve a pedir correo y contraseña.
+- La primera ejecución C3 elimina una sesión antigua restaurada desde `browserLocalPersistence`.
+- El botón **Cerrar sesión** ya no depende de que termine la sincronización cloud.
+- La auditoría de cierre se guarda localmente primero.
+- El envío cloud durante logout tiene un máximo aproximado de 1,2 s y después continúa el cierre.
+- Se limpia la identidad ERP activa y vuelve inmediatamente a la pantalla de acceso.
+- El cierre automático por 30 minutos utiliza el mismo mecanismo fiable.
+- Se conserva Fast Production Bootstrap de C2, permisos, auditoría y Firebase Bootstrap de C1.
 
-- Authentication y Firestore conectan primero.
-- El indicador cambia rápidamente a `FIREBASE`.
-- Los listeners Multi-PC se activan inmediatamente.
-- La descarga inicial de colecciones se ejecuta en segundo plano y en paralelo.
-- Un dominio con error o timeout no deja todo el ERP eternamente en `SINCRONIZANDO`.
-- El Estado técnico informa si la carga fue completa, parcial o vacía.
-- Cada dominio tiene un timeout de bootstrap de 15 segundos.
-- El outbox ya no cambia toda la cabecera a `SINCRONIZANDO` durante cada envío rutinario.
-- Se conserva V3.5.3-C1: configuración Firebase de producción precargada.
-- No se modifican Authentication, permisos, auditoría, reglas de negocio ni estructura Firestore.
+## Actualización Netlify
+Reemplace en GitHub los archivos de la C2 por los de esta C3 y espere el deploy automático de Netlify.
 
-## Actualizar Netlify
-Reemplace en GitHub los archivos de la versión C1 por los de esta C2. Netlify desplegará el nuevo commit automáticamente.
-
-Prueba recomendada:
-1. Abrir `https://microbiologia-erp.netlify.app` en ventana privada.
-2. Iniciar sesión.
-3. Confirmar que la cabecera pase de `SINCRONIZANDO` a `FIREBASE` rápidamente.
-4. Esperar unos segundos y verificar que los datos cloud aparezcan.
-5. Revisar Administración > Estado técnico para confirmar el resultado del bootstrap.
+Prueba:
+1. Abrir la web.
+2. Debe pedir credenciales.
+3. Iniciar sesión.
+4. Pulsar Cerrar sesión: debe volver al login.
+5. Cerrar la ventana/navegador y abrir de nuevo: debe pedir credenciales nuevamente.
