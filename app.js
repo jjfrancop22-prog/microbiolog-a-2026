@@ -1,4 +1,4 @@
-const VERSION='V3.5.4-A6.1';
+const VERSION='V3.5.4-A3';
 const SCHEMA_VERSION=1;
 const WORKSPACE_ID='lab-psi';
 let CLOUD_SYNC_ENABLED=localStorage.getItem('microbio_cloud_enabled')==='true'; // sesión unificada puede activarla automáticamente tras login válido
@@ -756,72 +756,7 @@ function idbAll(store){return new Promise((res,rej)=>{const r=tx(store).getAll()
 function idbClear(store){return new Promise((res,rej)=>{const r=tx(store,'readwrite').clear();r.onsuccess=()=>res();r.onerror=()=>rej(r.error)})}
 
 function ensureStateDomains(){for(const d of DOMAINS)if(!Array.isArray(state[d]))state[d]=[]}
-const draftProtectedForms=new Set();
-let draftProtectionBound=false;
-function draftFieldKey(el,index){return el.id||el.name||`__field_${index}`}
-function captureInProgressFormDrafts(){
-  const activeForm=document.activeElement?.form||document.activeElement?.closest?.('form')||null;
-  const snapshots=[];
-  for(const form of document.querySelectorAll('form')){
-    const dirty=form.dataset.erpDraftDirty==='1'||form===activeForm;
-    if(!dirty)continue;
-    const fields=[];
-    [...form.elements].forEach((el,index)=>{
-      if(!el||!el.name&& !el.id)return;
-      if(el.type==='file'||el.type==='submit'||el.type==='button'||el.type==='reset')return;
-      // Solo proteger información que el usuario puede estar digitando/seleccionando.
-      // Los campos calculados readonly/disabled se reconstruyen desde el ERP después.
-      if(el.disabled||el.readOnly)return;
-      const item={key:draftFieldKey(el,index),name:el.name||'',id:el.id||'',type:el.type||el.tagName,index};
-      if(el.type==='checkbox'||el.type==='radio')item.checked=!!el.checked;
-      else if(el.tagName==='SELECT'&&el.multiple)item.value=[...el.selectedOptions].map(o=>o.value);
-      else item.value=el.value;
-      fields.push(item);
-    });
-    snapshots.push({id:form.id||'',form,fields,activeKey:form===activeForm?draftFieldKey(document.activeElement,[...form.elements].indexOf(document.activeElement)):''});
-  }
-  return snapshots;
-}
-function restoreInProgressFormDrafts(snapshots){
-  for(const snap of snapshots||[]){
-    const form=(snap.id&&document.getElementById(snap.id))||snap.form;
-    if(!form||form.tagName!=='FORM')continue;
-    for(const item of snap.fields||[]){
-      let el=item.id?document.getElementById(item.id):null;
-      if(!el&&item.name)el=form.elements[item.name];
-      if(el?.length&& !el.tagName)el=[...el].find(x=>draftFieldKey(x,[...form.elements].indexOf(x))===item.key)||el[0];
-      if(!el||el.disabled||el.readOnly)continue;
-      if(item.type==='checkbox'||item.type==='radio')el.checked=!!item.checked;
-      else if(el.tagName==='SELECT'&&el.multiple){const values=new Set(item.value||[]);[...el.options].forEach(o=>o.selected=values.has(o.value));}
-      else if(el.tagName==='SELECT'){
-        // No imponer una opción que dejó de existir realmente en el estado actualizado.
-        if([...el.options].some(o=>o.value===String(item.value??'')))el.value=item.value??'';
-      }else el.value=item.value??'';
-    }
-    form.dataset.erpDraftDirty='1';
-  }
-  // Recalcular únicamente derivados; nunca borrar lo restaurado por el usuario.
-  try{updatePrepCalculated()}catch{}
-  try{updateStrainPrepCalculated()}catch{}
-  try{updateReactivationCalculated()}catch{}
-  try{updateMicroControlCalculated()}catch{}
-  try{updateQCExecutionPreview()}catch{}
-  try{updateSampleAnalysisPreview()}catch{}
-  const active=snapshots?.find(x=>x.activeKey);
-  if(active){
-    const form=(active.id&&document.getElementById(active.id))||active.form;
-    const target=[...(form?.elements||[])].find((el,i)=>draftFieldKey(el,i)===active.activeKey);
-    try{target?.focus({preventScroll:true})}catch{}
-  }
-}
-function bindDraftProtection(){
-  if(draftProtectionBound)return;draftProtectionBound=true;
-  const mark=e=>{const f=e.target?.form;if(f){f.dataset.erpDraftDirty='1';draftProtectedForms.add(f.id||f)}};
-  document.addEventListener('input',mark,true);
-  document.addEventListener('change',mark,true);
-  document.addEventListener('reset',e=>{const f=e.target;if(f?.tagName==='FORM')setTimeout(()=>{delete f.dataset.erpDraftDirty;draftProtectedForms.delete(f.id||f)},0)},true);
-}
-async function loadLocal(){const drafts=captureInProgressFormDrafts();const all=await idbAll('records');for(const d of DOMAINS)state[d]=all.filter(x=>x.domain===d&&!x.deleted).map(x=>x.data);renderAll();restoreInProgressFormDrafts(drafts)}
+async function loadLocal(){const all=await idbAll('records');for(const d of DOMAINS)state[d]=all.filter(x=>x.domain===d&&!x.deleted).map(x=>x.data);renderAll()}
 
 const AUDIT_DOMAIN_LABELS=Object.freeze({
   sampleIntakes:'Registro de muestra y duplicados',
@@ -926,39 +861,7 @@ function shouldAutoAudit(domain){
   return domain!=='auditLog' && !!state.auth?.currentUser && !document.body.classList.contains('secure-locked');
 }
 async function saveLocal(domain,record,{queue=true,render=true,audit=true}={}){const old=state[domain]?.find?.(x=>x.id===record.id);const stamp=nowISO();const revision=Number(old?.revision||0)+1;const data={...record,id:record.id||crypto.randomUUID(),schemaVersion:SCHEMA_VERSION,workspaceId:WORKSPACE_ID,revision,createdAt:record.createdAt||old?.createdAt||stamp,updatedAt:stamp,updatedAtMs:Date.now(),originDeviceId:record.originDeviceId||old?.originDeviceId||deviceId,deviceId,version:VERSION,createdBy:record.createdBy||old?.createdBy||activeUser(),updatedBy:activeUser(),deleted:false};const key=`${domain}:${data.id}`;await idbPut('records',{key,domain,data,deleted:false});if(queue&&cloudWriteAllowed()){const opId=crypto.randomUUID();await idbPut('outbox',{key:opId,opId,workspaceId:WORKSPACE_ID,schemaVersion:SCHEMA_VERSION,domain,entityId:data.id,operation:'UPSERT',payload:data,status:'PENDING',attempts:0,createdAt:stamp,lastAttemptAt:'',ackedAt:''})}if(render)await loadLocal();else{const i=state[domain].findIndex(x=>x.id===data.id);if(i>=0)state[domain][i]=data;else state[domain].push(data)}updateOutbox();if(CLOUD_SYNC_ENABLED&&state.connected&&cloudWriteAllowed())flushOutbox();if(audit&&shouldAutoAudit(domain)){const action=old?'EDIT':'CREATE';await centralAuditEvent({action,module:auditModuleForDomain(domain),domain,entityId:data.id,recordLabel:humanRecordLabel(domain,data),before:old,after:data,details:{summary:`${action} · ${humanRecordLabel(domain,data)}`}})}return data}
-let remoteRenderTimer=null;
-function scheduleRemoteRender(){
-  if(remoteRenderTimer)return;
-  remoteRenderTimer=setTimeout(()=>{
-    remoteRenderTimer=null;
-    const drafts=captureInProgressFormDrafts();
-    renderAll();
-    restoreInProgressFormDrafts(drafts);
-  },120);
-}
-async function saveRemote(domain,data){
-  const resetAtMs=productionResetEpoch();
-  if(PRODUCTION_RESET_DOMAINS.includes(domain)&&resetAtMs&&Number(data?.updatedAtMs||0)<resetAtMs){
-    if(state.connected&&cloudWriteAllowed()&&data?.id){try{const ref=state.firebase.doc(state.firestore,'workspaces',WORKSPACE_ID,CLOUD_COLLECTIONS[domain],data.id);state.firebase.deleteDoc(ref).catch(()=>{})}catch{}}
-    return;
-  }
-  const key=`${domain}:${data.id}`,receivedAt=nowISO();
-  await idbPut('inbox',{key:`${domain}:${data.id}:${data.revision||data.updatedAtMs||receivedAt}`,workspaceId:WORKSPACE_ID,domain,entityId:data.id,payload:data,receivedAt,status:'RECEIVED'});
-  const pending=(await idbAll('outbox')).some(x=>x.domain===domain&&x.entityId===data.id&&x.status==='PENDING');
-  const current=state[domain]?.find?.(x=>x.id===data.id);
-  if(pending&&current&&JSON.stringify(current)!==JSON.stringify(data)){
-    const conflictId=crypto.randomUUID();
-    await idbPut('conflicts',{key:conflictId,id:conflictId,workspaceId:WORKSPACE_ID,domain,entityId:data.id,local:current,remote:data,status:'OPEN',detectedAt:receivedAt});
-    return;
-  }
-  if(current&&(current.updatedAtMs||0)>(data.updatedAtMs||0))return;
-  await idbPut('records',{key,domain,data,deleted:!!data.deleted});
-  const arr=state[domain]||(state[domain]=[]),idx=arr.findIndex(x=>x.id===data.id);
-  if(data.deleted){if(idx>=0)arr.splice(idx,1)}
-  else if(idx>=0)arr[idx]=data;
-  else arr.push(data);
-  scheduleRemoteRender();
-}
+async function saveRemote(domain,data){const key=`${domain}:${data.id}`;const receivedAt=nowISO();await idbPut('inbox',{key:`${domain}:${data.id}:${data.revision||data.updatedAtMs||receivedAt}`,workspaceId:WORKSPACE_ID,domain,entityId:data.id,payload:data,receivedAt,status:'RECEIVED'});const pending=(await idbAll('outbox')).some(x=>x.domain===domain&&x.entityId===data.id&&x.status==='PENDING');const all=await idbAll('records');const current=all.find(x=>x.key===key)?.data;if(pending&&current&&JSON.stringify(current)!==JSON.stringify(data)){const conflictId=crypto.randomUUID();await idbPut('conflicts',{key:conflictId,id:conflictId,workspaceId:WORKSPACE_ID,domain,entityId:data.id,local:current,remote:data,status:'OPEN',detectedAt:receivedAt});return}if(current&&(current.updatedAtMs||0)>(data.updatedAtMs||0))return;await idbPut('records',{key,domain,data,deleted:!!data.deleted});await loadLocal()}
 async function audit(entityType,entityId,action,details={}){
   const e={
     id:crypto.randomUUID(),
@@ -1121,9 +1024,7 @@ function applyReleaseDefaults(){const p=state.mediaPrep.find(x=>x.id===$('#relea
 
 function renderSelects(){const qcIds=new Set(state.mediaQC.map(q=>q.prepId));$('#qcPrepSelect').innerHTML='<option value="">Seleccione lote</option>'+state.mediaPrep.filter(p=>!qcIds.has(p.id)).sort((a,b)=>(a.date||'').localeCompare(b.date||'')).map(p=>`<option value="${p.id}">${esc(p.lotCode)} · ${esc(p.medium)}</option>`).join('');const relIds=new Set(state.mediaRelease.map(r=>r.prepId));$('#releasePrepSelect').innerHTML='<option value="">Seleccione lote</option>'+state.mediaPrep.filter(p=>latestQC(p.id)?.result==='APTO'&&performanceResolvedForPrep(p)&&!relIds.has(p.id)&&!isClosed(p)).map(p=>`<option value="${p.id}">${esc(p.lotCode)} · ${esc(p.medium)}</option>`).join('');$('#releaseDecisionSelect').innerHTML='<option value="">Seleccione</option><option value="LIBERADO">LIBERAR</option><option value="BLOQUEADO">BLOQUEAR</option>';$('#closurePrepSelect').innerHTML='<option value="">Seleccione lote</option>'+state.mediaPrep.filter(p=>!isClosed(p)&&['LIBERADO','BLOQUEADO'].includes(p.status)).map(p=>`<option value="${p.id}">${esc(p.lotCode)} · ${esc(p.medium)}</option>`).join('');for(const s of $$('.yesno-select'))s.innerHTML='<option value="">Seleccione</option><option value="Sí">Sí</option><option value="No">No</option>';for(const s of $$('.compliance-select,.performance-select'))s.innerHTML='<option value="">Seleccione</option><option value="CUMPLE">CUMPLE</option><option value="NO_CUMPLE">NO CUMPLE</option>';const vols=[];for(let i=100;i<=1500;i+=100)vols.push(`<option value="${i}">${i} mL</option>`);$('#prepVolumeSelect').innerHTML='<option value="">Seleccione</option>'+vols.join('')}
 function renderPendingQC(){const rows=state.mediaPrep.filter(p=>!latestQC(p.id)&&!isClosed(p));$('#qcPendingCount').textContent=`${rows.length} ${rows.length===1?'pendiente':'pendientes'}`;$('#qcPendingRows').innerHTML=rows.map(p=>`<tr><td><b>${esc(p.lotCode)}</b></td><td>${esc(p.date)}</td><td>${esc(p.medium)}</td><td>${esc(p.bottleCode||'SIN REGISTRO')}</td><td>${pill(performanceRequiredForPrep(p)?(performanceTestsForPrep(p).map(performanceTestLabel).join(' + ')||'CLASIFICAR MEDIO'):'NO APLICA')}</td><td>${esc(p.expiryDate||'—')}</td><td>${pill(lotAlert(p))}</td><td><button class="mini primary-mini" onclick="openPendingQC('${p.id}')">Evaluar QC</button></td></tr>`).join('')||'<tr><td colspan="8" class="empty-success">✓ No hay lotes pendientes de QC.</td></tr>'}
-function canCorrectPreparedQuantity(p){if(!p||p.type!=='Agar'||isClosed(p))return false;const released=latestRelease(p.id)?.decision==='LIBERADO'||p.status==='LIBERADO';return released&&plateEventsForPrep(p.id).filter(e=>['USO','BAJA'].includes(e.type)).length===0}
-function renderPrep(){const rows=[...state.mediaPrep].sort((a,b)=>(b.date||'').localeCompare(a.date||''));$('#prepRows').innerHTML=rows.map(p=>`<tr><td><b>${esc(p.lotCode)}</b></td><td>${esc(p.date)}</td><td>${esc(p.medium)}</td><td>${esc(p.bottleCode||'SIN REGISTRO')}</td><td>${esc(p.quantity)}</td><td>${esc(p.volumeMl||'—')} mL</td><td>${esc(p.theoreticalMass??'—')} g</td><td>${esc(p.expiryDate||'—')}</td><td>${pill(lotState(p))}</td><td>${pill(lotAlert(p))}</td><td>${esc(p.responsible||'—')}</td><td>${canCorrectPreparedQuantity(p)?`<button class="mini" onclick="correctPreparedQuantity('${p.id}')">Corregir cantidad</button>`:'—'}</td></tr>`).join('')||'<tr><td colspan="12">Sin registros.</td></tr>'}
-window.correctPreparedQuantity=async id=>{const p=state.mediaPrep.find(x=>x.id===id);if(!p)return;if(!canCorrectPreparedQuantity(p)){toast('Solo se puede corregir un lote de cajas Petri LIBERADO sin consumos ni bajas.');return}const oldQty=Number(p.quantity||0),raw=prompt(`Corregir cantidad preparada de ${p.lotCode}. Cantidad registrada: ${oldQty}`,String(oldQty));if(raw===null)return;const newQty=Number(raw);if(!Number.isInteger(newQty)||newQty<1){toast('Ingrese una cantidad entera mayor que cero.');return}if(newQty===oldQty){toast('La cantidad no cambió.');return}const reason=prompt('Motivo de la corrección:','Error de registro de cantidad preparada');if(reason===null||!reason.trim()){toast('Debe registrar el motivo de la corrección.');return}if(!confirm(`Confirmar corrección de ${oldQty} a ${newQty} caja(s) en ${p.lotCode}. El lote, QC y liberación permanecerán intactos.`))return;await saveLocal('mediaPrep',{...p,quantity:newQty,quantityCorrection:{previous:oldQty,current:newQty,reason:reason.trim(),correctedAt:nowISO(),correctedBy:activeUser()}},{render:false});await audit('mediaPrep',p.id,'CANTIDAD PREPARADA CORREGIDA',{summary:`${p.lotCode} · ${oldQty} → ${newQty} caja(s) · ${reason.trim()}`,previousQuantity:oldQty,newQuantity:newQty,reason:reason.trim()});await loadLocal();toast(`Cantidad corregida: ${oldQty} → ${newQty}. Inventario actualizado automáticamente.`)};
+function renderPrep(){const rows=[...state.mediaPrep].sort((a,b)=>(b.date||'').localeCompare(a.date||''));$('#prepRows').innerHTML=rows.map(p=>`<tr><td><b>${esc(p.lotCode)}</b></td><td>${esc(p.date)}</td><td>${esc(p.medium)}</td><td>${esc(p.bottleCode||'SIN REGISTRO')}</td><td>${esc(p.quantity)}</td><td>${esc(p.volumeMl||'—')} mL</td><td>${esc(p.theoreticalMass??'—')} g</td><td>${esc(p.expiryDate||'—')}</td><td>${pill(lotState(p))}</td><td>${pill(lotAlert(p))}</td><td>${esc(p.responsible||'—')}</td></tr>`).join('')||'<tr><td colspan="11">Sin registros.</td></tr>'}
 function renderQC(){$('#qcRows').innerHTML=[...state.mediaQC].sort((a,b)=>(b.updatedAt||'').localeCompare(a.updatedAt||'')).map(q=>{const p=state.mediaPrep.find(x=>x.id===q.prepId)||{};const perf=q.performanceRequired?[['Prod.',q.productivity],['Sel.',q.selectivity],['Esp.',q.specificity]].filter(([,v])=>v&&v!=='N/A').map(([k,v])=>`${k} ${v}`).join(' · '):'N/A';return `<tr><td><b>${esc(p.lotCode||'—')}</b></td><td>${esc(p.medium||'—')}</td><td>${esc(p.bottleCode||'—')}</td><td>${pill(q.sterility)}</td><td>${pill(q.macroscopic)}</td><td>${esc(q.ph)}</td><td>${esc(perf)}</td><td>${pill(q.result)}</td><td>${esc(q.responsible||'—')}</td></tr>`}).join('')||'<tr><td colspan="9">Sin controles.</td></tr>'}
 function renderRelease(){ $('#releaseRows').innerHTML=[...state.mediaRelease].sort((a,b)=>(b.updatedAt||'').localeCompare(a.updatedAt||'')).map(r=>{const p=state.mediaPrep.find(x=>x.id===r.prepId)||{},q=latestQC(r.prepId);return `<tr><td><b>${esc(p.lotCode||'—')}</b></td><td>${esc(p.medium||'—')}</td><td>${pill(q?.result||'—')}</td><td>${pill(r.decision)}</td><td>${esc(r.date)}</td><td>${esc(r.responsible)}</td></tr>`}).join('')||'<tr><td colspan="6">Sin liberaciones.</td></tr>'}
 function renderInventory(){const rows=state.mediaPrep.filter(p=>latestRelease(p.id)?.decision==='LIBERADO'||isClosed(p)).sort((a,b)=>(b.date||'').localeCompare(a.date||''));$('#inventoryRows').innerHTML=rows.map(p=>`<tr><td><b>${esc(p.lotCode)}</b></td><td>${esc(p.medium)}</td><td>${esc(p.bottleCode||'—')}</td><td>${pill(lotState(p))}</td><td>${esc(p.expiryDate||'—')}</td><td>${esc(daysRemainingLabel(p.expiryDate))}</td><td>${pill(validityState(p))}</td><td>${pill(availabilityState(p))}</td><td>${pill(lotAlert(p))}</td><td>${isClosed(p)?esc(closureLabel(p.closureType)):'—'}</td><td><button class="mini" onclick="showLot('${p.id}')">Ver trazabilidad</button>${!isClosed(p)?` <button class="mini" onclick="openClosure('${p.id}')">Cerrar</button>`:''}</td></tr>`).join('')||'<tr><td colspan="11">Sin lotes liberados o cerrados.</td></tr>'}
@@ -3569,40 +3470,6 @@ $('#firebaseForm')?.addEventListener('submit',e=>{
 if($('#disconnectBtn'))$('#disconnectBtn').onclick=()=>toast('El ERP ya está operando solo en local.');
 
 
-const PRODUCTION_RESET_GUARD_ID='production-reset-guard';
-function productionResetEpoch(){return Number(localStorage.getItem('microbio_production_reset_epoch')||0)}
-function rememberProductionResetEpoch(ms){const n=Number(ms||0);if(n>productionResetEpoch())localStorage.setItem('microbio_production_reset_epoch',String(n));return n}
-async function readCloudProductionResetGuard(fsMod,fs){
-  try{
-    const ref=fsMod.doc(fs,'workspaces',WORKSPACE_ID,CLOUD_COLLECTIONS.systemConfig,PRODUCTION_RESET_GUARD_ID);
-    const snap=await fsMod.getDoc(ref);
-    if(!snap.exists())return 0;
-    const ms=Number(snap.data()?.resetAtMs||0);
-    return rememberProductionResetEpoch(ms);
-  }catch(err){console.warn('No se pudo leer guardia de reinicio',err);return productionResetEpoch()}
-}
-async function writeCloudProductionResetGuard(fsMod,fs,resetAtMs){
-  const ref=fsMod.doc(fs,'workspaces',WORKSPACE_ID,CLOUD_COLLECTIONS.systemConfig,PRODUCTION_RESET_GUARD_ID);
-  await fsMod.setDoc(ref,{id:PRODUCTION_RESET_GUARD_ID,resetAtMs,resetAt:new Date(resetAtMs).toISOString(),workspaceId:WORKSPACE_ID,schemaVersion:SCHEMA_VERSION,version:VERSION,updatedAtMs:resetAtMs,updatedAt:new Date(resetAtMs).toISOString(),updatedBy:activeUser(),purpose:'Bloquear reaparición de datos operativos anteriores al Inicio Limpio de Producción'},{merge:true});
-  rememberProductionResetEpoch(resetAtMs);
-}
-async function purgeStaleLocalOperationalData(resetAtMs){
-  resetAtMs=Number(resetAtMs||0);if(!resetAtMs)return {records:0,outbox:0};
-  let records=0,outbox=0;
-  for(const row of await idbAll('records')){
-    if(!PRODUCTION_RESET_DOMAINS.includes(row.domain))continue;
-    const ts=Number(row.data?.updatedAtMs||0);
-    if(!ts||ts<resetAtMs){await idbDelete('records',row.key);records++}
-  }
-  for(const row of await idbAll('outbox')){
-    if(!PRODUCTION_RESET_DOMAINS.includes(row.domain))continue;
-    const ts=Number(row.payload?.updatedAtMs||0);
-    if(!ts||ts<resetAtMs){await idbDelete('outbox',row.key);outbox++}
-  }
-  await idbClear('conflicts');
-  return {records,outbox};
-}
-
 const PRODUCTION_RESET_DOMAINS=Object.freeze([
   'mediaPrep','mediaQC','mediaRelease','catalogBottles','performanceTasks','performanceTests','performanceLinks',
   'strainPreparations','strainReactivations','strainCryovialEvents',
@@ -3723,22 +3590,6 @@ async function executeProductionCleanStart(){
       return;
     }
 
-    const resetAtMs=Date.now();
-    productionCleanStartStatus('Firebase limpio. Publicando barrera de reinicio Multi-PC…','RUNNING');
-    await writeCloudProductionResetGuard(fsMod,fs,resetAtMs);
-
-    // Verificación final: no aceptar un reset como completo si quedó algún documento operativo.
-    let residualCloud=0;
-    for(const domain of PRODUCTION_RESET_DOMAINS){
-      const ref=fsMod.collection(fs,'workspaces',WORKSPACE_ID,CLOUD_COLLECTIONS[domain]);
-      const snap=await fsMod.getDocs(ref);
-      if(snap.size){
-        residualCloud+=snap.size;
-        cloudDeleted+=await deleteCloudDomainForCleanStart(fsMod,fs,domain);
-      }
-    }
-    if(residualCloud)console.warn(`Clean Start: se depuraron ${residualCloud} registro(s) residuales en segunda pasada.`);
-
     productionCleanStartStatus('Firebase limpio. Limpiando datos operativos locales…','RUNNING');
     const localDeleted=await clearLocalProductionData();
 
@@ -3756,7 +3607,6 @@ async function executeProductionCleanStart(){
         summary:`Inicio limpio completado · cloud ${cloudDeleted} · local ${localDeleted}`,
         cloudDeleted,
         localDeleted,
-        resetAtMs,
         preserved:'Authentication, erpDirectory, permisos, configuraciones técnicas, criterios y auditLog'
       }
     });
@@ -3871,8 +3721,6 @@ let backgroundBootstrapPromise=null;
 async function writeBootstrapRemoteRecordFast(domain,data,recordMap){
   if(productionCleanStartInProgress)return 0;
   if(!data?.id)return 0;
-  const resetAtMs=productionResetEpoch();
-  if(PRODUCTION_RESET_DOMAINS.includes(domain)&&resetAtMs&&Number(data.updatedAtMs||0)<resetAtMs)return 0;
   const key=`${domain}:${data.id}`;
   const current=recordMap.get(key)?.data;
   if(current&&(Number(current.updatedAtMs||0)>Number(data.updatedAtMs||0)))return 0;
@@ -3891,9 +3739,6 @@ function withBootstrapTimeout(promise,domain,ms=15000){
 
 async function bootstrapNewPcFromCloudFast(fsMod,fs){
   bootstrapStatus('Firebase conectado · reconciliando datos locales con la nube…','RUNNING');
-
-  const resetAtMs=await readCloudProductionResetGuard(fsMod,fs);
-  if(resetAtMs)await purgeStaleLocalOperationalData(resetAtMs);
 
   const existingRows=await idbAll('records');
   const recordMap=new Map(existingRows.map(r=>[r.key,r]));
@@ -4174,7 +4019,7 @@ async function connectFirebase(config){
     if($('#firebaseStatus'))$('#firebaseStatus').textContent='Error de conexión Firebase: '+String(err?.message||err);
   }
 }
-async function flushOutbox(){if(!CLOUD_SYNC_ENABLED||!state.connected||!cloudWriteAllowed())return;const rows=await idbAll('outbox');if(!rows.length){updateOutbox();return}const resetAtMs=productionResetEpoch();for(const row of rows){if(PRODUCTION_RESET_DOMAINS.includes(row.domain)&&resetAtMs&&Number(row.payload?.updatedAtMs||0)<resetAtMs){await idbDelete('outbox',row.key);continue}try{const ref=state.firebase.doc(state.firestore,'workspaces',WORKSPACE_ID,CLOUD_COLLECTIONS[row.domain],row.entityId);await state.firebase.setDoc(ref,row.payload,{merge:true});await idbPut('syncMeta',{key:`ack:${row.opId}`,opId:row.opId,entityId:row.entityId,domain:row.domain,ackedAt:nowISO()});await idbDelete('outbox',row.key)}catch(err){row.attempts=Number(row.attempts||0)+1;row.lastAttemptAt=nowISO();row.lastError=String(err?.message||err);await idbPut('outbox',row);console.error('Sync pendiente',row.key,err)}}await updateOutbox();if(state.connected)setSyncStatus('online',cloudReadOnlyClient()?'FIREBASE · LECTURA':'FIREBASE')}
+async function flushOutbox(){if(!CLOUD_SYNC_ENABLED||!state.connected||!cloudWriteAllowed())return;const rows=await idbAll('outbox');if(!rows.length){updateOutbox();return}for(const row of rows){try{const ref=state.firebase.doc(state.firestore,'workspaces',WORKSPACE_ID,CLOUD_COLLECTIONS[row.domain],row.entityId);await state.firebase.setDoc(ref,row.payload,{merge:true});await idbPut('syncMeta',{key:`ack:${row.opId}`,opId:row.opId,entityId:row.entityId,domain:row.domain,ackedAt:nowISO()});await idbDelete('outbox',row.key)}catch(err){row.attempts=Number(row.attempts||0)+1;row.lastAttemptAt=nowISO();row.lastError=String(err?.message||err);await idbPut('outbox',row);console.error('Sync pendiente',row.key,err)}}await updateOutbox();if(state.connected)setSyncStatus('online',cloudReadOnlyClient()?'FIREBASE · LECTURA':'FIREBASE')}
 window.addEventListener('online',()=>{if(CLOUD_SYNC_ENABLED&&state.connected&&cloudWriteAllowed())flushOutbox()});
 
 async function migrateANPerformanceExclusion(){
@@ -4260,7 +4105,7 @@ function bindCloudAdminControls(){
 }
 showSecureLogin('Ingrese sus credenciales.');
 bootstrapProductionFirebaseConfig();
-async function boot(){db=await openDB();$('#deviceId').textContent=deviceId;await seed();await migrate();await loadLocal();await dedupeIntegratedBottleMirrors();await loadLocal();ensureStateDomains();await seedEquipmentCatalog();await migrateAutoclaveCleaningFrequencyV342G();await seedEnvironmentConfig();await seedRefrigeratorConfig();await seedRefrigerator2Config();await seedIncubatorConfig();await seedWaterBathConfig();await seedPhMeterConfig();await migrateIncubatorScheduleWorkdays();ensureStateDomains();for(const lot of state.productLots.filter(l=>productLotStatus(l)==='APTO'))await syncProductLotToERP(lot);await dedupeIntegratedBottleMirrors();await loadLocal();await migrateMonitoringFrequenciesV220();await loadLocal();await migrateANPerformanceExclusion();await loadLocal();await reconcileExhaustedPlateLots();await loadLocal();await migrateSurfaceSwabLimitsD2();for(const p of state.mediaPrep.filter(x=>performanceRequiredForPrep(x)&&!performanceTaskForPrep(x.id)&&bottleById(x.bottleId)?.qualificationStatus!=='CALIFICADO'))await createPerformanceTaskForPrep(p);await loadLocal();renderSelects();bindDraftProtection();bindAccessControl();bindRealPermissionGuards();bindCloudAdminControls();bindFirebaseAuthControls();bindSecureLogin();bindUserDirectoryControls();bindCentralAudit();bindDeletionSecurityGuard();bindProductionCleanStart();bindMicroPlanner();bindSampleModule();bindProductModule();bindEquipmentModule();bindEnvironmentModule();bindRefrigeratorModule();bindRefrigerator2Module();bindIncubatorModule();bindWaterBathModule();bindControlChartHub();bindPhMeterModule();activateMicroTab('catalog');resetPrep();resetQC();resetStrainPrep();resetReactivation();applyAccessControl();adminAccessSafetyCheck();fillFirebaseForm();applyFirebaseConfigAccess();await initFirebaseAuthOnly();await updateOutbox();if(CLOUD_SYNC_ENABLED){const cfg=getFirebaseConfig();if($('#firebaseStatus'))$('#firebaseStatus').textContent=`Conectando · workspace ${WORKSPACE_ID} · schema v${SCHEMA_VERSION}.`;await connectFirebase(cfg)}else{setSyncStatus('offline','LOCAL');if($('#firebaseStatus'))$('#firebaseStatus').textContent=`Cloud Foundation definida · workspace ${WORKSPACE_ID} · schema v${SCHEMA_VERSION} · sincronización desactivada.`}}
+async function boot(){db=await openDB();$('#deviceId').textContent=deviceId;await seed();await migrate();await loadLocal();await dedupeIntegratedBottleMirrors();await loadLocal();ensureStateDomains();await seedEquipmentCatalog();await migrateAutoclaveCleaningFrequencyV342G();await seedEnvironmentConfig();await seedRefrigeratorConfig();await seedRefrigerator2Config();await seedIncubatorConfig();await seedWaterBathConfig();await seedPhMeterConfig();await migrateIncubatorScheduleWorkdays();ensureStateDomains();for(const lot of state.productLots.filter(l=>productLotStatus(l)==='APTO'))await syncProductLotToERP(lot);await dedupeIntegratedBottleMirrors();await loadLocal();await migrateMonitoringFrequenciesV220();await loadLocal();await migrateANPerformanceExclusion();await loadLocal();await reconcileExhaustedPlateLots();await loadLocal();await migrateSurfaceSwabLimitsD2();for(const p of state.mediaPrep.filter(x=>performanceRequiredForPrep(x)&&!performanceTaskForPrep(x.id)&&bottleById(x.bottleId)?.qualificationStatus!=='CALIFICADO'))await createPerformanceTaskForPrep(p);await loadLocal();renderSelects();bindAccessControl();bindRealPermissionGuards();bindCloudAdminControls();bindFirebaseAuthControls();bindSecureLogin();bindUserDirectoryControls();bindCentralAudit();bindDeletionSecurityGuard();bindProductionCleanStart();bindMicroPlanner();bindSampleModule();bindProductModule();bindEquipmentModule();bindEnvironmentModule();bindRefrigeratorModule();bindRefrigerator2Module();bindIncubatorModule();bindWaterBathModule();bindControlChartHub();bindPhMeterModule();activateMicroTab('catalog');resetPrep();resetQC();resetStrainPrep();resetReactivation();applyAccessControl();adminAccessSafetyCheck();fillFirebaseForm();applyFirebaseConfigAccess();await initFirebaseAuthOnly();await updateOutbox();if(CLOUD_SYNC_ENABLED){const cfg=getFirebaseConfig();if($('#firebaseStatus'))$('#firebaseStatus').textContent=`Conectando · workspace ${WORKSPACE_ID} · schema v${SCHEMA_VERSION}.`;await connectFirebase(cfg)}else{setSyncStatus('offline','LOCAL');if($('#firebaseStatus'))$('#firebaseStatus').textContent=`Cloud Foundation definida · workspace ${WORKSPACE_ID} · schema v${SCHEMA_VERSION} · sincronización desactivada.`}}
 boot().catch(err=>{console.error(err);toast('Error de arranque: '+err.message)});
 
 if(document.readyState==='loading'){

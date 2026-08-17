@@ -1,4 +1,4 @@
-# MICROBIOLOGÍA ERP V3.5.4-A4 — Released Quantity Correction
+# MICROBIOLOGÍA ERP V3.5.4-A3 — Full Product Catalog Reset
 
 Base: V3.5.4-A2.
 
@@ -19,7 +19,3 @@ Después de publicar esta versión:
    - Productos configurados: vacío.
    - Lotes activos: 0.
    - Otra computadora/navegador debe reconciliarse y quedar también vacío.
-
-
-## V3.5.4-A6
-Protección de borradores en formularios durante sincronización Firebase y re-render interno.
