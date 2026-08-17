@@ -1,4 +1,4 @@
-const VERSION='V3.5.4-A6';
+const VERSION='V3.5.4-A6.1';
 const SCHEMA_VERSION=1;
 const WORKSPACE_ID='lab-psi';
 let CLOUD_SYNC_ENABLED=localStorage.getItem('microbio_cloud_enabled')==='true'; // sesión unificada puede activarla automáticamente tras login válido
@@ -926,7 +926,39 @@ function shouldAutoAudit(domain){
   return domain!=='auditLog' && !!state.auth?.currentUser && !document.body.classList.contains('secure-locked');
 }
 async function saveLocal(domain,record,{queue=true,render=true,audit=true}={}){const old=state[domain]?.find?.(x=>x.id===record.id);const stamp=nowISO();const revision=Number(old?.revision||0)+1;const data={...record,id:record.id||crypto.randomUUID(),schemaVersion:SCHEMA_VERSION,workspaceId:WORKSPACE_ID,revision,createdAt:record.createdAt||old?.createdAt||stamp,updatedAt:stamp,updatedAtMs:Date.now(),originDeviceId:record.originDeviceId||old?.originDeviceId||deviceId,deviceId,version:VERSION,createdBy:record.createdBy||old?.createdBy||activeUser(),updatedBy:activeUser(),deleted:false};const key=`${domain}:${data.id}`;await idbPut('records',{key,domain,data,deleted:false});if(queue&&cloudWriteAllowed()){const opId=crypto.randomUUID();await idbPut('outbox',{key:opId,opId,workspaceId:WORKSPACE_ID,schemaVersion:SCHEMA_VERSION,domain,entityId:data.id,operation:'UPSERT',payload:data,status:'PENDING',attempts:0,createdAt:stamp,lastAttemptAt:'',ackedAt:''})}if(render)await loadLocal();else{const i=state[domain].findIndex(x=>x.id===data.id);if(i>=0)state[domain][i]=data;else state[domain].push(data)}updateOutbox();if(CLOUD_SYNC_ENABLED&&state.connected&&cloudWriteAllowed())flushOutbox();if(audit&&shouldAutoAudit(domain)){const action=old?'EDIT':'CREATE';await centralAuditEvent({action,module:auditModuleForDomain(domain),domain,entityId:data.id,recordLabel:humanRecordLabel(domain,data),before:old,after:data,details:{summary:`${action} · ${humanRecordLabel(domain,data)}`}})}return data}
-async function saveRemote(domain,data){const resetAtMs=productionResetEpoch();if(PRODUCTION_RESET_DOMAINS.includes(domain)&&resetAtMs&&Number(data?.updatedAtMs||0)<resetAtMs){if(state.connected&&cloudWriteAllowed()&&data?.id){try{const ref=state.firebase.doc(state.firestore,'workspaces',WORKSPACE_ID,CLOUD_COLLECTIONS[domain],data.id);state.firebase.deleteDoc(ref).catch(()=>{})}catch{}}return}const key=`${domain}:${data.id}`;const receivedAt=nowISO();await idbPut('inbox',{key:`${domain}:${data.id}:${data.revision||data.updatedAtMs||receivedAt}`,workspaceId:WORKSPACE_ID,domain,entityId:data.id,payload:data,receivedAt,status:'RECEIVED'});const pending=(await idbAll('outbox')).some(x=>x.domain===domain&&x.entityId===data.id&&x.status==='PENDING');const all=await idbAll('records');const current=all.find(x=>x.key===key)?.data;if(pending&&current&&JSON.stringify(current)!==JSON.stringify(data)){const conflictId=crypto.randomUUID();await idbPut('conflicts',{key:conflictId,id:conflictId,workspaceId:WORKSPACE_ID,domain,entityId:data.id,local:current,remote:data,status:'OPEN',detectedAt:receivedAt});return}if(current&&(current.updatedAtMs||0)>(data.updatedAtMs||0))return;await idbPut('records',{key,domain,data,deleted:!!data.deleted});await loadLocal()}
+let remoteRenderTimer=null;
+function scheduleRemoteRender(){
+  if(remoteRenderTimer)return;
+  remoteRenderTimer=setTimeout(()=>{
+    remoteRenderTimer=null;
+    const drafts=captureInProgressFormDrafts();
+    renderAll();
+    restoreInProgressFormDrafts(drafts);
+  },120);
+}
+async function saveRemote(domain,data){
+  const resetAtMs=productionResetEpoch();
+  if(PRODUCTION_RESET_DOMAINS.includes(domain)&&resetAtMs&&Number(data?.updatedAtMs||0)<resetAtMs){
+    if(state.connected&&cloudWriteAllowed()&&data?.id){try{const ref=state.firebase.doc(state.firestore,'workspaces',WORKSPACE_ID,CLOUD_COLLECTIONS[domain],data.id);state.firebase.deleteDoc(ref).catch(()=>{})}catch{}}
+    return;
+  }
+  const key=`${domain}:${data.id}`,receivedAt=nowISO();
+  await idbPut('inbox',{key:`${domain}:${data.id}:${data.revision||data.updatedAtMs||receivedAt}`,workspaceId:WORKSPACE_ID,domain,entityId:data.id,payload:data,receivedAt,status:'RECEIVED'});
+  const pending=(await idbAll('outbox')).some(x=>x.domain===domain&&x.entityId===data.id&&x.status==='PENDING');
+  const current=state[domain]?.find?.(x=>x.id===data.id);
+  if(pending&&current&&JSON.stringify(current)!==JSON.stringify(data)){
+    const conflictId=crypto.randomUUID();
+    await idbPut('conflicts',{key:conflictId,id:conflictId,workspaceId:WORKSPACE_ID,domain,entityId:data.id,local:current,remote:data,status:'OPEN',detectedAt:receivedAt});
+    return;
+  }
+  if(current&&(current.updatedAtMs||0)>(data.updatedAtMs||0))return;
+  await idbPut('records',{key,domain,data,deleted:!!data.deleted});
+  const arr=state[domain]||(state[domain]=[]),idx=arr.findIndex(x=>x.id===data.id);
+  if(data.deleted){if(idx>=0)arr.splice(idx,1)}
+  else if(idx>=0)arr[idx]=data;
+  else arr.push(data);
+  scheduleRemoteRender();
+}
 async function audit(entityType,entityId,action,details={}){
   const e={
     id:crypto.randomUUID(),
