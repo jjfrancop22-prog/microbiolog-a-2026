@@ -1,4 +1,4 @@
-# MICROBIOLOGÍA ERP V3.5.4-A3 — Full Product Catalog Reset
+# MICROBIOLOGÍA ERP V3.5.4-A4 — Released Quantity Correction
 
 Base: V3.5.4-A2.
 
