@@ -1,4 +1,4 @@
-const VERSION='V3.5.4-A5';
+const VERSION='V3.5.4-A6';
 const SCHEMA_VERSION=1;
 const WORKSPACE_ID='lab-psi';
 let CLOUD_SYNC_ENABLED=localStorage.getItem('microbio_cloud_enabled')==='true'; // sesión unificada puede activarla automáticamente tras login válido
@@ -756,7 +756,72 @@ function idbAll(store){return new Promise((res,rej)=>{const r=tx(store).getAll()
 function idbClear(store){return new Promise((res,rej)=>{const r=tx(store,'readwrite').clear();r.onsuccess=()=>res();r.onerror=()=>rej(r.error)})}
 
 function ensureStateDomains(){for(const d of DOMAINS)if(!Array.isArray(state[d]))state[d]=[]}
-async function loadLocal(){const all=await idbAll('records');for(const d of DOMAINS)state[d]=all.filter(x=>x.domain===d&&!x.deleted).map(x=>x.data);renderAll()}
+const draftProtectedForms=new Set();
+let draftProtectionBound=false;
+function draftFieldKey(el,index){return el.id||el.name||`__field_${index}`}
+function captureInProgressFormDrafts(){
+  const activeForm=document.activeElement?.form||document.activeElement?.closest?.('form')||null;
+  const snapshots=[];
+  for(const form of document.querySelectorAll('form')){
+    const dirty=form.dataset.erpDraftDirty==='1'||form===activeForm;
+    if(!dirty)continue;
+    const fields=[];
+    [...form.elements].forEach((el,index)=>{
+      if(!el||!el.name&& !el.id)return;
+      if(el.type==='file'||el.type==='submit'||el.type==='button'||el.type==='reset')return;
+      // Solo proteger información que el usuario puede estar digitando/seleccionando.
+      // Los campos calculados readonly/disabled se reconstruyen desde el ERP después.
+      if(el.disabled||el.readOnly)return;
+      const item={key:draftFieldKey(el,index),name:el.name||'',id:el.id||'',type:el.type||el.tagName,index};
+      if(el.type==='checkbox'||el.type==='radio')item.checked=!!el.checked;
+      else if(el.tagName==='SELECT'&&el.multiple)item.value=[...el.selectedOptions].map(o=>o.value);
+      else item.value=el.value;
+      fields.push(item);
+    });
+    snapshots.push({id:form.id||'',form,fields,activeKey:form===activeForm?draftFieldKey(document.activeElement,[...form.elements].indexOf(document.activeElement)):''});
+  }
+  return snapshots;
+}
+function restoreInProgressFormDrafts(snapshots){
+  for(const snap of snapshots||[]){
+    const form=(snap.id&&document.getElementById(snap.id))||snap.form;
+    if(!form||form.tagName!=='FORM')continue;
+    for(const item of snap.fields||[]){
+      let el=item.id?document.getElementById(item.id):null;
+      if(!el&&item.name)el=form.elements[item.name];
+      if(el?.length&& !el.tagName)el=[...el].find(x=>draftFieldKey(x,[...form.elements].indexOf(x))===item.key)||el[0];
+      if(!el||el.disabled||el.readOnly)continue;
+      if(item.type==='checkbox'||item.type==='radio')el.checked=!!item.checked;
+      else if(el.tagName==='SELECT'&&el.multiple){const values=new Set(item.value||[]);[...el.options].forEach(o=>o.selected=values.has(o.value));}
+      else if(el.tagName==='SELECT'){
+        // No imponer una opción que dejó de existir realmente en el estado actualizado.
+        if([...el.options].some(o=>o.value===String(item.value??'')))el.value=item.value??'';
+      }else el.value=item.value??'';
+    }
+    form.dataset.erpDraftDirty='1';
+  }
+  // Recalcular únicamente derivados; nunca borrar lo restaurado por el usuario.
+  try{updatePrepCalculated()}catch{}
+  try{updateStrainPrepCalculated()}catch{}
+  try{updateReactivationCalculated()}catch{}
+  try{updateMicroControlCalculated()}catch{}
+  try{updateQCExecutionPreview()}catch{}
+  try{updateSampleAnalysisPreview()}catch{}
+  const active=snapshots?.find(x=>x.activeKey);
+  if(active){
+    const form=(active.id&&document.getElementById(active.id))||active.form;
+    const target=[...(form?.elements||[])].find((el,i)=>draftFieldKey(el,i)===active.activeKey);
+    try{target?.focus({preventScroll:true})}catch{}
+  }
+}
+function bindDraftProtection(){
+  if(draftProtectionBound)return;draftProtectionBound=true;
+  const mark=e=>{const f=e.target?.form;if(f){f.dataset.erpDraftDirty='1';draftProtectedForms.add(f.id||f)}};
+  document.addEventListener('input',mark,true);
+  document.addEventListener('change',mark,true);
+  document.addEventListener('reset',e=>{const f=e.target;if(f?.tagName==='FORM')setTimeout(()=>{delete f.dataset.erpDraftDirty;draftProtectedForms.delete(f.id||f)},0)},true);
+}
+async function loadLocal(){const drafts=captureInProgressFormDrafts();const all=await idbAll('records');for(const d of DOMAINS)state[d]=all.filter(x=>x.domain===d&&!x.deleted).map(x=>x.data);renderAll();restoreInProgressFormDrafts(drafts)}
 
 const AUDIT_DOMAIN_LABELS=Object.freeze({
   sampleIntakes:'Registro de muestra y duplicados',
@@ -4163,7 +4228,7 @@ function bindCloudAdminControls(){
 }
 showSecureLogin('Ingrese sus credenciales.');
 bootstrapProductionFirebaseConfig();
-async function boot(){db=await openDB();$('#deviceId').textContent=deviceId;await seed();await migrate();await loadLocal();await dedupeIntegratedBottleMirrors();await loadLocal();ensureStateDomains();await seedEquipmentCatalog();await migrateAutoclaveCleaningFrequencyV342G();await seedEnvironmentConfig();await seedRefrigeratorConfig();await seedRefrigerator2Config();await seedIncubatorConfig();await seedWaterBathConfig();await seedPhMeterConfig();await migrateIncubatorScheduleWorkdays();ensureStateDomains();for(const lot of state.productLots.filter(l=>productLotStatus(l)==='APTO'))await syncProductLotToERP(lot);await dedupeIntegratedBottleMirrors();await loadLocal();await migrateMonitoringFrequenciesV220();await loadLocal();await migrateANPerformanceExclusion();await loadLocal();await reconcileExhaustedPlateLots();await loadLocal();await migrateSurfaceSwabLimitsD2();for(const p of state.mediaPrep.filter(x=>performanceRequiredForPrep(x)&&!performanceTaskForPrep(x.id)&&bottleById(x.bottleId)?.qualificationStatus!=='CALIFICADO'))await createPerformanceTaskForPrep(p);await loadLocal();renderSelects();bindAccessControl();bindRealPermissionGuards();bindCloudAdminControls();bindFirebaseAuthControls();bindSecureLogin();bindUserDirectoryControls();bindCentralAudit();bindDeletionSecurityGuard();bindProductionCleanStart();bindMicroPlanner();bindSampleModule();bindProductModule();bindEquipmentModule();bindEnvironmentModule();bindRefrigeratorModule();bindRefrigerator2Module();bindIncubatorModule();bindWaterBathModule();bindControlChartHub();bindPhMeterModule();activateMicroTab('catalog');resetPrep();resetQC();resetStrainPrep();resetReactivation();applyAccessControl();adminAccessSafetyCheck();fillFirebaseForm();applyFirebaseConfigAccess();await initFirebaseAuthOnly();await updateOutbox();if(CLOUD_SYNC_ENABLED){const cfg=getFirebaseConfig();if($('#firebaseStatus'))$('#firebaseStatus').textContent=`Conectando · workspace ${WORKSPACE_ID} · schema v${SCHEMA_VERSION}.`;await connectFirebase(cfg)}else{setSyncStatus('offline','LOCAL');if($('#firebaseStatus'))$('#firebaseStatus').textContent=`Cloud Foundation definida · workspace ${WORKSPACE_ID} · schema v${SCHEMA_VERSION} · sincronización desactivada.`}}
+async function boot(){db=await openDB();$('#deviceId').textContent=deviceId;await seed();await migrate();await loadLocal();await dedupeIntegratedBottleMirrors();await loadLocal();ensureStateDomains();await seedEquipmentCatalog();await migrateAutoclaveCleaningFrequencyV342G();await seedEnvironmentConfig();await seedRefrigeratorConfig();await seedRefrigerator2Config();await seedIncubatorConfig();await seedWaterBathConfig();await seedPhMeterConfig();await migrateIncubatorScheduleWorkdays();ensureStateDomains();for(const lot of state.productLots.filter(l=>productLotStatus(l)==='APTO'))await syncProductLotToERP(lot);await dedupeIntegratedBottleMirrors();await loadLocal();await migrateMonitoringFrequenciesV220();await loadLocal();await migrateANPerformanceExclusion();await loadLocal();await reconcileExhaustedPlateLots();await loadLocal();await migrateSurfaceSwabLimitsD2();for(const p of state.mediaPrep.filter(x=>performanceRequiredForPrep(x)&&!performanceTaskForPrep(x.id)&&bottleById(x.bottleId)?.qualificationStatus!=='CALIFICADO'))await createPerformanceTaskForPrep(p);await loadLocal();renderSelects();bindDraftProtection();bindAccessControl();bindRealPermissionGuards();bindCloudAdminControls();bindFirebaseAuthControls();bindSecureLogin();bindUserDirectoryControls();bindCentralAudit();bindDeletionSecurityGuard();bindProductionCleanStart();bindMicroPlanner();bindSampleModule();bindProductModule();bindEquipmentModule();bindEnvironmentModule();bindRefrigeratorModule();bindRefrigerator2Module();bindIncubatorModule();bindWaterBathModule();bindControlChartHub();bindPhMeterModule();activateMicroTab('catalog');resetPrep();resetQC();resetStrainPrep();resetReactivation();applyAccessControl();adminAccessSafetyCheck();fillFirebaseForm();applyFirebaseConfigAccess();await initFirebaseAuthOnly();await updateOutbox();if(CLOUD_SYNC_ENABLED){const cfg=getFirebaseConfig();if($('#firebaseStatus'))$('#firebaseStatus').textContent=`Conectando · workspace ${WORKSPACE_ID} · schema v${SCHEMA_VERSION}.`;await connectFirebase(cfg)}else{setSyncStatus('offline','LOCAL');if($('#firebaseStatus'))$('#firebaseStatus').textContent=`Cloud Foundation definida · workspace ${WORKSPACE_ID} · schema v${SCHEMA_VERSION} · sincronización desactivada.`}}
 boot().catch(err=>{console.error(err);toast('Error de arranque: '+err.message)});
 
 if(document.readyState==='loading'){
