@@ -1,4 +1,4 @@
-const VERSION='V3.5.4-A3.1';
+const VERSION='V3.5.4-A3.2';
 const SCHEMA_VERSION=1;
 const WORKSPACE_ID='lab-psi';
 let CLOUD_SYNC_ENABLED=localStorage.getItem('microbio_cloud_enabled')==='true'; // sesión unificada puede activarla automáticamente tras login válido
@@ -752,6 +752,7 @@ function openDB(){return new Promise((resolve,reject)=>{const r=indexedDB.open(D
 function tx(store,mode='readonly'){return db.transaction(store,mode).objectStore(store)}
 function idbPut(store,value){return new Promise((res,rej)=>{const r=tx(store,'readwrite').put(value);r.onsuccess=()=>res();r.onerror=()=>rej(r.error)})}
 function idbDelete(store,key){return new Promise((res,rej)=>{const r=tx(store,'readwrite').delete(key);r.onsuccess=()=>res();r.onerror=()=>rej(r.error)})}
+function idbGet(store,key){return new Promise((res,rej)=>{const r=tx(store).get(key);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})}
 function idbAll(store){return new Promise((res,rej)=>{const r=tx(store).getAll();r.onsuccess=()=>res(r.result||[]);r.onerror=()=>rej(r.error)})}
 function idbClear(store){return new Promise((res,rej)=>{const r=tx(store,'readwrite').clear();r.onsuccess=()=>res();r.onerror=()=>rej(r.error)})}
 
@@ -861,7 +862,40 @@ function shouldAutoAudit(domain){
   return domain!=='auditLog' && !!state.auth?.currentUser && !document.body.classList.contains('secure-locked');
 }
 async function saveLocal(domain,record,{queue=true,render=true,audit=true}={}){const old=state[domain]?.find?.(x=>x.id===record.id);const stamp=nowISO();const revision=Number(old?.revision||0)+1;const data={...record,id:record.id||crypto.randomUUID(),schemaVersion:SCHEMA_VERSION,workspaceId:WORKSPACE_ID,revision,createdAt:record.createdAt||old?.createdAt||stamp,updatedAt:stamp,updatedAtMs:Date.now(),originDeviceId:record.originDeviceId||old?.originDeviceId||deviceId,deviceId,version:VERSION,createdBy:record.createdBy||old?.createdBy||activeUser(),updatedBy:activeUser(),deleted:false};const key=`${domain}:${data.id}`;await idbPut('records',{key,domain,data,deleted:false});if(queue&&cloudWriteAllowed()){const opId=crypto.randomUUID();await idbPut('outbox',{key:opId,opId,workspaceId:WORKSPACE_ID,schemaVersion:SCHEMA_VERSION,domain,entityId:data.id,operation:'UPSERT',payload:data,status:'PENDING',attempts:0,createdAt:stamp,lastAttemptAt:'',ackedAt:''})}if(render)await loadLocal();else{const i=state[domain].findIndex(x=>x.id===data.id);if(i>=0)state[domain][i]=data;else state[domain].push(data)}updateOutbox();if(CLOUD_SYNC_ENABLED&&state.connected&&cloudWriteAllowed())flushOutbox();if(audit&&shouldAutoAudit(domain)){const action=old?'EDIT':'CREATE';await centralAuditEvent({action,module:auditModuleForDomain(domain),domain,entityId:data.id,recordLabel:humanRecordLabel(domain,data),before:old,after:data,details:{summary:`${action} · ${humanRecordLabel(domain,data)}`}})}return data}
-async function saveRemote(domain,data){const key=`${domain}:${data.id}`;const receivedAt=nowISO();await idbPut('inbox',{key:`${domain}:${data.id}:${data.revision||data.updatedAtMs||receivedAt}`,workspaceId:WORKSPACE_ID,domain,entityId:data.id,payload:data,receivedAt,status:'RECEIVED'});const pending=(await idbAll('outbox')).some(x=>x.domain===domain&&x.entityId===data.id&&x.status==='PENDING');const all=await idbAll('records');const current=all.find(x=>x.key===key)?.data;if(pending&&current&&JSON.stringify(current)!==JSON.stringify(data)){const conflictId=crypto.randomUUID();await idbPut('conflicts',{key:conflictId,id:conflictId,workspaceId:WORKSPACE_ID,domain,entityId:data.id,local:current,remote:data,status:'OPEN',detectedAt:receivedAt});return}if(current&&(current.updatedAtMs||0)>(data.updatedAtMs||0))return;await idbPut('records',{key,domain,data,deleted:!!data.deleted});await loadLocal()}
+let remoteSyncRenderTimer=null;
+function scheduleRemoteSyncRender(){
+  if(remoteSyncRenderTimer)return;
+  remoteSyncRenderTimer=setTimeout(()=>{
+    remoteSyncRenderTimer=null;
+    try{renderAll()}catch(err){console.warn('Render remoto',err)}
+  },40);
+}
+async function saveRemote(domain,data){
+  if(!data?.id)return;
+  const key=`${domain}:${data.id}`;
+  const receivedAt=nowISO();
+  await idbPut('inbox',{key:`${domain}:${data.id}:${data.revision||data.updatedAtMs||receivedAt}`,workspaceId:WORKSPACE_ID,domain,entityId:data.id,payload:data,receivedAt,status:'RECEIVED'});
+  const pending=(await idbAll('outbox')).some(x=>x.domain===domain&&x.entityId===data.id&&x.status==='PENDING');
+  const currentRow=await idbGet('records',key);
+  const current=currentRow?.data;
+  if(pending&&current&&JSON.stringify(current)!==JSON.stringify(data)){
+    const conflictId=crypto.randomUUID();
+    await idbPut('conflicts',{key:conflictId,id:conflictId,workspaceId:WORKSPACE_ID,domain,entityId:data.id,local:current,remote:data,status:'OPEN',detectedAt:receivedAt});
+    return;
+  }
+  if(current&&(current.updatedAtMs||0)>(data.updatedAtMs||0))return;
+  await idbPut('records',{key,domain,data,deleted:!!data.deleted});
+
+  // Actualización incremental: evita releer toda IndexedDB y renderizar toda la app
+  // por cada documento recibido. Los cambios de una misma ráfaga Firebase se pintan juntos.
+  if(Array.isArray(state[domain])){
+    const i=state[domain].findIndex(x=>String(x.id||'')===String(data.id));
+    if(data.deleted){if(i>=0)state[domain].splice(i,1)}
+    else if(i>=0)state[domain][i]=data;
+    else state[domain].push(data);
+  }
+  scheduleRemoteSyncRender();
+}
 async function audit(entityType,entityId,action,details={}){
   const e={
     id:crypto.randomUUID(),

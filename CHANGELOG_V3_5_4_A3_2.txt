@@ -1,0 +1,12 @@
+MICROBIOLOGÍA ERP V3.5.4-A3.2 — Remote Sync Latency Fix
+
+Base: V3.5.4-A3.1 estable.
+
+Cambio puntual:
+- La recepción de Firebase ya no relee todos los registros de IndexedDB por cada documento recibido.
+- Los documentos remotos actualizan el estado local de forma incremental.
+- Los renders de una ráfaga de Firebase se agrupan en una ventana corta (40 ms).
+- Se conserva el control de conflictos, outbox, listeners, autenticación y arquitectura Local-First de A3.
+- Se conserva el cierre correcto de tareas de rendimiento de A3.1.
+
+Objetivo: reducir el tiempo entre la llegada del documento Firebase y su visualización en la otra computadora sin rediseñar el motor de sincronización.
