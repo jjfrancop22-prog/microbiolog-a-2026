@@ -1,0 +1,10 @@
+MICROBIOLOGÍA ERP V3.5.4-A3.5 — TOTAL CLEAN START BARRIER
+
+- Corrige el Reinicio de Producción Multi-PC.
+- El Reinicio ya incluye productCatalog y todos los dominios operativos definidos.
+- Añade una barrera global systemMeta/productionCleanStart en Firebase.
+- PCs conectadas reciben el reinicio y eliminan datos operativos locales + outbox.
+- PCs apagadas verifican la barrera antes de listeners/bootstrap/outbox al reconectarse.
+- Evita que una PC con datos antiguos vuelva a crear PDA u otros registros después del reinicio.
+- Conserva usuarios, permisos, configuraciones técnicas, criterios y auditoría.
+- No modifica la lógica funcional de los módulos ni el protocolo normal de sincronización.

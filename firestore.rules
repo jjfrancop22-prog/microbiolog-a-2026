@@ -23,6 +23,9 @@ service cloud.firestore {
     }
     match /erpAccess/{uid} { allow read: if signedIn() && request.auth.uid == uid; allow write: if false; }
 
+    // Barrera global de Reinicio Total de Producción: todas las PCs autorizadas la leen; solo ADMIN la modifica.
+    match /workspaces/lab-psi/systemMeta/{id} { allow read: if authorized(); allow create, update, delete: if isAdmin(); }
+
     match /workspaces/lab-psi/sampleIntakes/{id} { allow read: if canRead('samples'); allow create, update: if canWrite('samples'); allow delete: if isAdmin(); }
     match /workspaces/lab-psi/sampleAnalyses/{id} { allow read: if canRead('samples'); allow create, update: if canWrite('samples'); allow delete: if isAdmin(); }
     match /workspaces/lab-psi/duplicateEvaluations/{id} { allow read: if canRead('samples'); allow create, update: if canWrite('samples'); allow delete: if isAdmin(); }

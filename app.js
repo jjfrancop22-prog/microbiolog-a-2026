@@ -1,4 +1,4 @@
-const VERSION='V3.5.4-A3.4';
+const VERSION='V3.5.4-A3.5';
 const SCHEMA_VERSION=1;
 const WORKSPACE_ID='lab-psi';
 let CLOUD_SYNC_ENABLED=localStorage.getItem('microbio_cloud_enabled')==='true'; // sesión unificada puede activarla automáticamente tras login válido
@@ -3553,6 +3553,48 @@ const PRODUCTION_RESET_DOMAINS=Object.freeze([
   'phMeterReadings','phMeterAccuracy','phMeterTrace'
 ]);
 let productionCleanStartInProgress=false;
+const CLEAN_START_META_COLLECTION='systemMeta';
+const CLEAN_START_META_DOC='productionCleanStart';
+const CLEAN_START_LOCAL_EPOCH_KEY='microbio_clean_start_epoch';
+let cleanStartBarrierApplying=false;
+
+function localCleanStartEpoch(){return Number(localStorage.getItem(CLEAN_START_LOCAL_EPOCH_KEY)||0)}
+function markLocalCleanStartEpoch(epoch){if(Number(epoch)>0)localStorage.setItem(CLEAN_START_LOCAL_EPOCH_KEY,String(Number(epoch)))}
+async function cleanStartMetaRef(fsMod,fs){return fsMod.doc(fs,'workspaces',WORKSPACE_ID,CLEAN_START_META_COLLECTION,CLEAN_START_META_DOC)}
+async function publishCleanStartBarrier(fsMod,fs,{resetId,resetAtMs,status}){
+  const ref=await cleanStartMetaRef(fsMod,fs);
+  await fsMod.setDoc(ref,{resetId,resetAtMs,status,workspaceId:WORKSPACE_ID,requestedBy:activeUser(),requestedByUid:state.auth?.currentUser?.uid||'',deviceId,version:VERSION,updatedAt:nowISO()},{merge:true});
+}
+async function applyCleanStartBarrier(marker,{render=true}={}){
+  const epoch=Number(marker?.resetAtMs||0);
+  if(!epoch||epoch<=localCleanStartEpoch()||productionCleanStartInProgress||cleanStartBarrierApplying)return false;
+  cleanStartBarrierApplying=true;
+  try{
+    // Una PC antigua no puede repoblar Firebase después de un reinicio total.
+    // Primero se descartan registros operativos y TODA escritura pendiente local.
+    await clearLocalProductionData();
+    markLocalCleanStartEpoch(epoch);
+    await loadLocal();
+    if(render)renderAll();
+    console.warn('Clean Start remoto aplicado',marker?.resetId||epoch);
+    return true;
+  }finally{cleanStartBarrierApplying=false}
+}
+async function reconcileCleanStartBarrier(fsMod,fs){
+  try{
+    const ref=await cleanStartMetaRef(fsMod,fs);
+    const snap=await fsMod.getDoc(ref);
+    if(snap.exists())await applyCleanStartBarrier(snap.data(),{render:true});
+  }catch(err){console.warn('No se pudo verificar barrera Clean Start',err)}
+}
+async function startCleanStartBarrierListener(fsMod,fs){
+  const ref=await cleanStartMetaRef(fsMod,fs);
+  const unsub=fsMod.onSnapshot(ref,snap=>{
+    if(!snap.exists()||productionCleanStartInProgress)return;
+    applyCleanStartBarrier(snap.data(),{render:true}).catch(err=>console.warn('Barrera Clean Start remota',err));
+  },err=>console.warn('Listener Clean Start',err));
+  state.listeners.push(unsub);
+}
 
 function productionCleanStartStatus(text,mode=''){
   const el=document.getElementById('productionCleanStartStatus');
@@ -3634,6 +3676,12 @@ async function executeProductionCleanStart(){
 
   try{
     productionCleanStartStatus('Preparando reinicio seguro…','RUNNING');
+    const cleanStartResetId=crypto.randomUUID();
+    const cleanStartResetAtMs=Date.now();
+
+    // Publicar primero una barrera global. Las otras PCs conectadas limpian su estado y outbox;
+    // las PCs apagadas la aplicarán ANTES de volver a subir datos cuando se reconecten.
+    await publishCleanStartBarrier(fsMod,fs,{resetId:cleanStartResetId,resetAtMs:cleanStartResetAtMs,status:'RESETTING'});
 
     // Detener listeners para impedir que datos en tránsito vuelvan a IndexedDB durante la limpieza.
     state.listeners?.forEach(fn=>{try{fn()}catch{}});
@@ -3660,6 +3708,7 @@ async function executeProductionCleanStart(){
 
     productionCleanStartStatus('Firebase limpio. Limpiando datos operativos locales…','RUNNING');
     const localDeleted=await clearLocalProductionData();
+    markLocalCleanStartEpoch(cleanStartResetAtMs);
 
     await loadLocal();
     renderAll();
@@ -3679,7 +3728,9 @@ async function executeProductionCleanStart(){
       }
     });
     if(state.connected&&cloudWriteAllowed())await flushOutbox();
+    await publishCleanStartBarrier(fsMod,fs,{resetId:cleanStartResetId,resetAtMs:cleanStartResetAtMs,status:'COMPLETE'});
 
+    await startCleanStartBarrierListener(fsMod,fs);
     await startCloudListeners(fsMod,fs);
     setSyncStatus('online','FIREBASE');
     productionCleanStartStatus(`COMPLETADO · ${cloudDeleted} registro(s) cloud y ${localDeleted} registro(s) locales eliminados. El ERP está listo para iniciar producción.`,'DONE');
@@ -4033,7 +4084,9 @@ async function startAuthenticatedCloudSession(){
   if(!(await ensureFirebaseAuthMatchesActiveUser()))return;
   state.connected=true;
   if($('#firebaseStatus'))$('#firebaseStatus').textContent=`Autenticado como ${state.auth.currentUser.email}. Preparando sincronización segura…`;
+  await reconcileCleanStartBarrier(state.firebase,state.firestore);
   await bootstrapNewPcFromCloud(state.firebase,state.firestore);
+  await startCleanStartBarrierListener(state.firebase,state.firestore);
   await startCloudListeners(state.firebase,state.firestore);
   if(cloudWriteAllowed())await flushOutbox();
   setSyncStatus('online',cloudReadOnlyClient()?'FIREBASE · LECTURA':'FIREBASE');
@@ -4068,9 +4121,12 @@ async function connectFirebase(config){
     state.listeners?.forEach(fn=>{try{fn()}catch{}});
     state.listeners=[];
 
-    // Los listeners se activan primero: la sesión Multi-PC queda operativa sin esperar el bootstrap completo.
-    await startCloudListeners(fsMod,fs);
+    // Antes de escuchar dominios o vaciar outbox, aplicar cualquier Reinicio Total ejecutado
+    // por otra computadora. Esto impide que una PC antigua repueble Firebase.
     state.connected=true;
+    await reconcileCleanStartBarrier(fsMod,fs);
+    await startCleanStartBarrierListener(fsMod,fs);
+    await startCloudListeners(fsMod,fs);
 
     updateFirebaseAuthForm();
     setSyncStatus('online',cloudReadOnlyClient()?'FIREBASE · LECTURA':'FIREBASE');
