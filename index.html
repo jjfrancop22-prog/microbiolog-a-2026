@@ -5,13 +5,17 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Microbiología ERP V3.5.4-A3.2</title>
   <link rel="stylesheet" href="styles.css?v=V354A3" />
-  <link rel="icon" href="data:,">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <meta name="theme-color" content="#12643b">
+  <link rel="icon" type="image/png" sizes="192x192" href="/icons/micro-192.png">
+  <link rel="apple-touch-icon" href="/icons/micro-192.png">
 </head>
 <body>
 <header class="topbar">
   <div><h1>Microbiología ERP</h1><div class="version" id="appVersionLabel">V3.5.4-A3.2 · Remote Sync Latency Fix · Local-First</div></div>
   <div class="top-actions">
     <div class="session-user secure-session"><span>Usuario:</span> <b id="secureActiveUser">—</b></div><div id="activeRoleBadge" class="badge role-badge">—</div><button id="secureLogoutBtn" type="button" class="header-logout" aria-label="Cerrar sesión">Cerrar sesión</button>
+    <button id="microInstallApp" type="button" class="header-logout" style="display:none">Instalar MICROBIOLOGÍA ERP</button>
     <div id="syncBadge" class="badge offline">LOCAL</div>
   </div>
 </header>
@@ -1613,5 +1617,6 @@
 <div id="sampleTraceModal" class="modal" aria-hidden="true"><div class="modal-card sample-trace-modal-card"><button id="closeSampleTraceModal" class="modal-close">×</button><div id="sampleTraceModalContent"></div></div></div>
 <div id="toast" class="toast"></div>
 <script type="module" src="app.js?v=V354A3"></script>
+<script type="module" src="/src/pwa/desktop-runtime.js?v=V354A32PWA1"></script>
 </body>
 </html>

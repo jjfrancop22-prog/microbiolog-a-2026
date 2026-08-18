@@ -1,0 +1,9 @@
+MICROBIOLOGÍA ERP V3.5.4-A3.2-PWA1
+- Base de negocio intacta: V3.5.4-A3.2 PRODUCTION CLEAN.
+- PWA instalable añadida.
+- Iconos propios 192x192 y 512x512.
+- manifest.webmanifest.
+- Service Worker seguro sin caché agresiva de HTML/JS/CSS.
+- Botón Instalar MICROBIOLOGÍA ERP.
+- Aviso de nueva versión y actualización controlada.
+- Netlify/GitHub compatible.
