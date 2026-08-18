@@ -1,8 +1,0 @@
-V3.5.4-A5 — CLEAN START ORPHAN PURGE
-
-1. Clean Start ahora elimina y verifica en una segunda pasada todos los dominios operativos, incluyendo performanceTasks, performanceTests y performanceLinks.
-2. Publica una barrera de reinicio Multi-PC en systemConfig para impedir que outbox antiguos vuelvan a subir datos previos al reinicio.
-3. Al arrancar/reconciliar otra computadora, purga registros operativos y outbox anteriores a la barrera de reinicio.
-4. Los listeners ignoran y depuran documentos operativos antiguos que intenten reaparecer después del reinicio.
-5. Se conserva autenticación, permisos, configuraciones técnicas, criterios y auditLog.
-6. Corrección de cantidad preparada: para agares liberados sin consumos ni bajas, permite corregir cantidad aunque un registro histórico tenga unidad heredada incorrecta.
