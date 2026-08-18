@@ -1,0 +1,8 @@
+MICROBIOLOGÍA ERP V3.5.4-A3.6 — TOTAL CLEAN START PERMISSION FIX
+
+- La barrera Multi-PC de Reinicio Total usa systemConfig, colección ya cubierta por las reglas estables.
+- Preflight de permisos ANTES de cualquier borrado cloud.
+- Si el preflight falla, no se elimina ningún dato.
+- Mantiene limpieza de productCatalog, lotes, preparaciones, QC, rendimiento, cepas y demás datos operativos.
+- Mantiene usuarios, permisos, configuración técnica, criterios y auditoría.
+- No modifica el motor normal de sincronización ni la PWA.

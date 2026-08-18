@@ -1,4 +1,4 @@
-const VERSION='V3.5.4-A3.5';
+const VERSION='V3.5.4-A3.6';
 const SCHEMA_VERSION=1;
 const WORKSPACE_ID='lab-psi';
 let CLOUD_SYNC_ENABLED=localStorage.getItem('microbio_cloud_enabled')==='true'; // sesión unificada puede activarla automáticamente tras login válido
@@ -3553,8 +3553,8 @@ const PRODUCTION_RESET_DOMAINS=Object.freeze([
   'phMeterReadings','phMeterAccuracy','phMeterTrace'
 ]);
 let productionCleanStartInProgress=false;
-const CLEAN_START_META_COLLECTION='systemMeta';
-const CLEAN_START_META_DOC='productionCleanStart';
+const CLEAN_START_META_COLLECTION='systemConfig';
+const CLEAN_START_META_DOC='productionCleanStartBarrier';
 const CLEAN_START_LOCAL_EPOCH_KEY='microbio_clean_start_epoch';
 let cleanStartBarrierApplying=false;
 
@@ -3651,6 +3651,16 @@ async function clearLocalProductionData(){
   localStorage.removeItem('microbio_bootstrap_device');
   return removed;
 }
+async function verifyCleanStartCloudPermissions(fsMod,fs){
+  // Preflight ANTES de borrar: usa systemConfig, colección ya autorizada por las reglas estables.
+  const ref=await cleanStartMetaRef(fsMod,fs);
+  const probeId=crypto.randomUUID();
+  await fsMod.setDoc(ref,{preflightId:probeId,preflightAt:nowISO(),workspaceId:WORKSPACE_ID,updatedAt:nowISO()},{merge:true});
+  const snap=await fsMod.getDoc(ref);
+  if(!snap.exists()||snap.data()?.preflightId!==probeId)throw new Error('No se pudo verificar permiso de Reinicio Total en Firebase.');
+  return true;
+}
+
 async function executeProductionCleanStart(){
   if(productionCleanStartInProgress)return;
   if(!(await verifyCleanStartAdmin()))return;
@@ -3675,7 +3685,9 @@ async function executeProductionCleanStart(){
   if(btn)btn.disabled=true;
 
   try{
-    productionCleanStartStatus('Preparando reinicio seguro…','RUNNING');
+    productionCleanStartStatus('Verificando permisos de Firebase antes de borrar…','RUNNING');
+    await verifyCleanStartCloudPermissions(fsMod,fs);
+    productionCleanStartStatus('Permisos verificados. Preparando reinicio seguro…','RUNNING');
     const cleanStartResetId=crypto.randomUUID();
     const cleanStartResetAtMs=Date.now();
 
