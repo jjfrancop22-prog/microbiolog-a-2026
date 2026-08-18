@@ -1,4 +1,4 @@
-const VERSION='V3.5.4-A3.2';
+const VERSION='V3.5.4-A3.3';
 const SCHEMA_VERSION=1;
 const WORKSPACE_ID='lab-psi';
 let CLOUD_SYNC_ENABLED=localStorage.getItem('microbio_cloud_enabled')==='true'; // sesión unificada puede activarla automáticamente tras login válido
@@ -3251,7 +3251,7 @@ function renderProductModule(){
     if([...$('#productLotProduct').options].some(o=>o.value===current))$('#productLotProduct').value=current;
   }
   const lots=[...state.productLots].sort((a,b)=>String(b.receivedDate||'').localeCompare(String(a.receivedDate||'')));
-  $('#productLotRows').innerHTML=lots.map(l=>{const c=productCatalogById(l.productId), st=productLotStatus(l), av=productAvailable(l), exp=productEffectiveExpiry(l);return `<tr><td><b>${esc(l.internalCode)}</b></td><td>${esc(c?.name||'—')}</td><td>${esc(l.manufacturerLot)}</td><td>${productStatusPill(st)}</td><td>${av} ${esc(c?.unit||'')}</td><td>${esc(exp||'—')}</td><td>${esc(l.storageLocation||'—')}</td><td>${st==='APTO'&&!l.openedDate?`<button onclick="openProductLot('${l.id}')">🔓 Abrir</button>`:''}<button onclick="showProductTrace('${l.id}')">📋 Trazabilidad</button></td></tr>`}).join('')||'<tr><td colspan="8">Sin lotes registrados.</td></tr>';
+  $('#productLotRows').innerHTML=lots.map(l=>{const c=productCatalogById(l.productId), st=productLotStatus(l), av=productAvailable(l), exp=productEffectiveExpiry(l);return `<tr><td><b>${esc(l.internalCode)}</b></td><td>${esc(c?.name||'—')}</td><td>${esc(l.manufacturerLot)}</td><td>${productStatusPill(st)}</td><td>${av} ${esc(c?.unit||'')}</td><td>${esc(exp||'—')}</td><td>${esc(l.storageLocation||'—')}</td><td>${st==='APTO'&&!l.openedDate?`<button onclick="openProductLot('${l.id}')">🔓 Abrir</button>`:''}<button onclick="editProductExpiry('${l.id}')">📅 Editar vencimiento</button><button onclick="showProductTrace('${l.id}')">📋 Trazabilidad</button></td></tr>`}).join('')||'<tr><td colspan="8">Sin lotes registrados.</td></tr>';
   const usable=lots.filter(l=>productLotStatus(l)==='APTO'&&productAvailable(l)>0);
   const lotOpts='<option value="">Seleccione...</option>'+usable.map(l=>{const c=productCatalogById(l.productId);return `<option value="${l.id}">${esc(l.internalCode)} · ${esc(c?.name||'')} · disp. ${productAvailable(l)} ${esc(c?.unit||'')}</option>`}).join('');
   if($('#productUsageLot'))$('#productUsageLot').innerHTML=lotOpts;
@@ -3272,6 +3272,30 @@ function renderProductModule(){
 }
 window.editProductCatalog=id=>{const c=productCatalogById(id);if(!c)return;const f=$('#productCatalogForm');Object.entries(c).forEach(([k,v])=>{if(f.elements[k])f.elements[k].value=v??''});$('#product-tab-catalog').scrollIntoView({behavior:'smooth'})};
 window.openProductLot=async id=>{const l=productLotById(id);if(!l||productLotStatus(l)!=='APTO')return;const date=prompt('Fecha de primera apertura (AAAA-MM-DD):',productToday());if(!date)return;await saveLocal('productLots',{...l,openedDate:date,openedBy:activeUser()},{render:false});const linkedBottle=state.catalogBottles.find(b=>b.productLotId===id);if(linkedBottle)await saveLocal('catalogBottles',{...linkedBottle,openedAt:date},{render:false});await productTrace(id,'PRIMERA APERTURA',`Fecha ${date}. Vencimiento efectivo recalculado automáticamente.`);await loadLocal();toast('Apertura registrada.')};
+window.editProductExpiry=async id=>{
+  const lot=productLotById(id); if(!lot)return;
+  if(state.productClosures.some(x=>x.lotId===id)){toast('El lote está cerrado y no permite corregir su vencimiento.');return}
+  const previous=lot.manufacturerExpiry||'';
+  const next=prompt('Nueva fecha de vencimiento del fabricante (AAAA-MM-DD):',previous||productToday());
+  if(next===null)return;
+  const clean=String(next).trim();
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(clean)||Number.isNaN(new Date(clean+'T12:00:00').getTime())){toast('Ingrese una fecha válida en formato AAAA-MM-DD.');return}
+  if(clean===previous){toast('La fecha no cambió.');return}
+  const reason=prompt('Motivo de la corrección (obligatorio):','Corrección de fecha de vencimiento registrada');
+  if(!reason||!String(reason).trim()){toast('Debe registrar el motivo de la corrección.');return}
+  if(!confirm(`Corregir vencimiento de ${lot.internalCode} de ${previous||'SIN FECHA'} a ${clean}?`))return;
+  const updated=await saveLocal('productLots',{...lot,manufacturerExpiry:clean,expiryCorrectedAt:nowISO(),expiryCorrectedBy:activeUser(),expiryCorrectionReason:String(reason).trim()},{render:false});
+  const linkedBottle=state.catalogBottles.find(b=>b.productLotId===id);
+  if(linkedBottle)await saveLocal('catalogBottles',{...linkedBottle,expiryDate:clean},{render:false});
+  const cat=productCatalogById(updated.productId);
+  if(cat?.type==='Cepa de referencia'&&cat.erpStrainId){
+    const strain=state.catalogStrains.find(s=>s.id===cat.erpStrainId);
+    if(strain&&strain.productLotId===id)await saveLocal('catalogStrains',{...strain,referenceExpiry:clean},{render:false});
+  }
+  await productTrace(id,'CORRECCIÓN DE VENCIMIENTO',`Fecha fabricante: ${previous||'SIN FECHA'} → ${clean}. Motivo: ${String(reason).trim()}. Vencimiento efectivo: ${productEffectiveExpiry(updated)||clean}.`);
+  await loadLocal();
+  toast(`Vencimiento de ${lot.internalCode} actualizado a ${clean}.`);
+};
 window.showProductTrace=id=>{const events=state.productTrace.filter(x=>x.lotId===id).sort((a,b)=>String(a.eventAt).localeCompare(String(b.eventAt)));alert(events.map(e=>`${new Date(e.eventAt).toLocaleString()} · ${e.action} · ${e.user}\n${e.detail}`).join('\n\n')||'Sin eventos.')};
 function bindProductModule(){
   if(!$('#view-products')||$('#view-products').dataset.bound)return; $('#view-products').dataset.bound='1';
