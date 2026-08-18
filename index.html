@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Microbiología ERP V3.5.4-A3.3</title>
+  <title>Microbiología ERP V3.5.4-A3.4</title>
   <link rel="stylesheet" href="styles.css?v=V354A3" />
   <link rel="manifest" href="/manifest.webmanifest">
   <meta name="theme-color" content="#12643b">
@@ -12,7 +12,7 @@
 </head>
 <body>
 <header class="topbar">
-  <div><h1>Microbiología ERP</h1><div class="version" id="appVersionLabel">V3.5.4-A3.3 · Expiry Correction · Local-First</div></div>
+  <div><h1>Microbiología ERP</h1><div class="version" id="appVersionLabel">V3.5.4-A3.4 · Product Catalog Create Fix · Local-First</div></div>
   <div class="top-actions">
     <div class="session-user secure-session"><span>Usuario:</span> <b id="secureActiveUser">—</b></div><div id="activeRoleBadge" class="badge role-badge">—</div><button id="secureLogoutBtn" type="button" class="header-logout" aria-label="Cerrar sesión">Cerrar sesión</button>
     <button id="microInstallApp" type="button" class="header-logout" style="display:none">Instalar MICROBIOLOGÍA ERP</button>
@@ -730,7 +730,7 @@
             <label>Requiere CoA<select name="requiresCoa"><option value="SI">Sí</option><option value="NO">No</option></select></label>
             <label>Requiere evaluación de desempeño<select name="requiresPerformance"><option value="AUTO">Según tipo/regla</option><option value="SI">Sí</option><option value="NO">No</option></select></label>
             <label class="span-2">Criterios / referencia documental<textarea name="criteria" rows="2" placeholder="Especificación, ficha técnica, procedimiento interno..."></textarea></label>
-            <div class="form-actions span-2"><button class="primary" type="submit">Guardar producto</button><button type="button" id="productCatalogCancel">Cancelar edición</button></div>
+            <div class="form-actions span-2"><button class="primary" type="submit">Guardar producto</button><button type="button" id="productCatalogCancel">＋ Nuevo / limpiar formulario</button></div>
           </form>
         </div>
         <div class="panel"><h3>Productos configurados</h3><div class="table-wrap"><table><thead><tr><th>Producto</th><th>Tipo</th><th>Fabricante</th><th>Integración ERP</th><th>Almacenamiento</th><th>Postapertura</th><th>Stock mín.</th><th>Acción</th></tr></thead><tbody id="productCatalogRows"></tbody></table></div></div>

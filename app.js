@@ -1,4 +1,4 @@
-const VERSION='V3.5.4-A3.3';
+const VERSION='V3.5.4-A3.4';
 const SCHEMA_VERSION=1;
 const WORKSPACE_ID='lab-psi';
 let CLOUD_SYNC_ENABLED=localStorage.getItem('microbio_cloud_enabled')==='true'; // sesión unificada puede activarla automáticamente tras login válido
@@ -3235,6 +3235,9 @@ function productPresetData(code){
 }
 function applyProductPreset(code){
   const f=$('#productCatalogForm');if(!f)return;
+  /* Elegir una plantilla inicia un ALTA NUEVA: nunca reutiliza el ID de una edición anterior. */
+  if(code&&f.elements.id)f.elements.id.value='';
+  if(code)f.dataset.mode='create';
   if(code==='MANUAL'){for(const k of ['name','erpMediumName','erpStrainId'])if(f.elements[k])f.elements[k].value='';return}
   const p=productPresetData(code);if(!p)return;
   for(const [k,v] of Object.entries(p))if(f.elements[k])f.elements[k].value=v??'';
@@ -3270,7 +3273,14 @@ function renderProductModule(){
   if($('#productUsageResponsible'))$('#productUsageResponsible').value=activeUser();
   if($('#productClosureResponsible'))$('#productClosureResponsible').value=activeUser();
 }
-window.editProductCatalog=id=>{const c=productCatalogById(id);if(!c)return;const f=$('#productCatalogForm');Object.entries(c).forEach(([k,v])=>{if(f.elements[k])f.elements[k].value=v??''});$('#product-tab-catalog').scrollIntoView({behavior:'smooth'})};
+function resetProductCatalogForm(){
+  const f=$('#productCatalogForm');if(!f)return;
+  f.reset();
+  if(f.elements.id)f.elements.id.value='';
+  if($('#productPresetSelect'))$('#productPresetSelect').value='';
+  f.dataset.mode='create';
+}
+window.editProductCatalog=id=>{const c=productCatalogById(id);if(!c)return;const f=$('#productCatalogForm');resetProductCatalogForm();Object.entries(c).forEach(([k,v])=>{if(f.elements[k])f.elements[k].value=v??''});if(f.elements.id)f.elements.id.value=c.id;f.dataset.mode='edit';$('#product-tab-catalog').scrollIntoView({behavior:'smooth'})};
 window.openProductLot=async id=>{const l=productLotById(id);if(!l||productLotStatus(l)!=='APTO')return;const date=prompt('Fecha de primera apertura (AAAA-MM-DD):',productToday());if(!date)return;await saveLocal('productLots',{...l,openedDate:date,openedBy:activeUser()},{render:false});const linkedBottle=state.catalogBottles.find(b=>b.productLotId===id);if(linkedBottle)await saveLocal('catalogBottles',{...linkedBottle,openedAt:date},{render:false});await productTrace(id,'PRIMERA APERTURA',`Fecha ${date}. Vencimiento efectivo recalculado automáticamente.`);await loadLocal();toast('Apertura registrada.')};
 window.editProductExpiry=async id=>{
   const lot=productLotById(id); if(!lot)return;
@@ -3303,8 +3313,8 @@ function bindProductModule(){
   $('#productManufacturerSelect')?.addEventListener('change',e=>handleProductNewControlledValue(e.target,'microbio_product_manufacturers','fabricante'));
   $('#productStorageSelect')?.addEventListener('change',e=>handleProductNewControlledValue(e.target,'microbio_product_storage_ranges','rango de temperatura'));
   $$('.product-tab').forEach(b=>b.onclick=()=>{$$('.product-tab').forEach(x=>x.classList.remove('active'));b.classList.add('active');$$('.product-tabpane').forEach(x=>x.classList.remove('active'));$(`#product-tab-${b.dataset.productTab}`).classList.add('active')});
-  $('#productCatalogForm').addEventListener('submit',async e=>{e.preventDefault();const f=e.currentTarget,fd=Object.fromEntries(new FormData(f));const old=fd.id?productCatalogById(fd.id):null;if(fd.openShelfDays){const shelf=Number(fd.openShelfDays);if(!Number.isInteger(shelf)||shelf<15||shelf>720){toast('La vida útil postapertura debe estar entre 15 y 720 días, o quedar vacía si no aplica.');return}}const normalizedName=String(fd.name||'').trim().toUpperCase();const duplicate=state.productCatalog.find(c=>c.id!==fd.id&&String(c.name||'').trim().toUpperCase()===normalizedName);if(duplicate){toast('Ese producto ya existe en el Catálogo Maestro. Edite el registro existente en lugar de duplicarlo.');return}const rec={...old,...fd,name:String(fd.name||'').trim(),id:fd.id||crypto.randomUUID(),openShelfDays:fd.openShelfDays?Number(fd.openShelfDays):null,minStock:Number(fd.minStock||0)};await saveLocal('productCatalog',rec,{render:false});for(const lot of state.productLots.filter(l=>l.productId===rec.id&&productLotStatus(l)==='APTO'))await syncProductLotToERP(lot);f.reset();if($('#productPresetSelect'))$('#productPresetSelect').value='';await loadLocal();toast('Producto guardado en Catálogo Maestro.')});
-  $('#productCatalogCancel').onclick=()=>{const f=$('#productCatalogForm');f.reset();if($('#productPresetSelect'))$('#productPresetSelect').value='';renderProductModule()};
+  $('#productCatalogForm').addEventListener('submit',async e=>{e.preventDefault();const f=e.currentTarget,fd=Object.fromEntries(new FormData(f));const old=fd.id?productCatalogById(fd.id):null;if(fd.openShelfDays){const shelf=Number(fd.openShelfDays);if(!Number.isInteger(shelf)||shelf<15||shelf>720){toast('La vida útil postapertura debe estar entre 15 y 720 días, o quedar vacía si no aplica.');return}}const normalizedName=String(fd.name||'').trim().toUpperCase();const duplicate=state.productCatalog.find(c=>c.id!==fd.id&&String(c.name||'').trim().toUpperCase()===normalizedName);if(duplicate){toast('Ese producto ya existe en el Catálogo Maestro. Edite el registro existente en lugar de duplicarlo.');return}const rec={...old,...fd,name:String(fd.name||'').trim(),id:fd.id||crypto.randomUUID(),openShelfDays:fd.openShelfDays?Number(fd.openShelfDays):null,minStock:Number(fd.minStock||0)};await saveLocal('productCatalog',rec,{render:false});for(const lot of state.productLots.filter(l=>l.productId===rec.id&&productLotStatus(l)==='APTO'))await syncProductLotToERP(lot);resetProductCatalogForm();await loadLocal();toast(old?'Producto actualizado correctamente.':'Producto nuevo registrado en Catálogo Maestro.')});
+  $('#productCatalogCancel').onclick=()=>{resetProductCatalogForm();renderProductModule();toast('Formulario listo para registrar un producto nuevo.')};
   $('#productLotProduct').addEventListener('change',()=>{$('#productLotCodePreview').value=nextProductLotCode()});
   $('#productLotForm').addEventListener('submit',async e=>{e.preventDefault();const f=e.currentTarget,fd=Object.fromEntries(new FormData(f)),cat=productCatalogById(fd.productId);if(!cat)return toast('Seleccione un producto.');const old=fd.id?productLotById(fd.id):null;const dec=productReceptionDecision(fd,cat);const rec={...old,...fd,id:fd.id||crypto.randomUUID(),internalCode:old?.internalCode||nextProductLotCode(),quantityReceived:Number(fd.quantityReceived||0),status:dec.status,statusReason:dec.reason,reviewedBy:activeUser(),reviewedAt:nowISO()};const saved=await saveLocal('productLots',rec,{render:false});if(dec.status==='APTO')await syncProductLotToERP(saved);await productTrace(saved.id,'RECEPCIÓN Y EVALUACIÓN',`${dec.status}: ${dec.reason}. Lote fabricante ${fd.manufacturerLot}; proveedor ${fd.supplier}; vencimiento ${fd.manufacturerExpiry}.`);f.reset();await loadLocal();toast(`Lote ${saved.internalCode}: ${dec.status}.`)});
   $('#productLotCancel').onclick=()=>$('#productLotForm').reset();
