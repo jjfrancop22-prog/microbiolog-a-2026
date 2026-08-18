@@ -1,8 +1,0 @@
-MICROBIOLOGIA ERP V3.5.4-A6.1 — Draft Protection Sync Fix
-
-- Mantiene la protección de datos no guardados mientras el usuario digita.
-- Corrige la interferencia de A6 con la sincronización Multi-PC.
-- Los cambios remotos ya no ejecutan loadLocal()+renderAll() por cada documento recibido.
-- Firebase actualiza IndexedDB y el estado en memoria de forma incremental.
-- La interfaz remota se repinta por lotes, preservando los borradores activos.
-- No modifica Clean Start, permisos, QC, liberación ni reglas operativas.
