@@ -1,7 +1,0 @@
-MICROBIOLOGÍA ERP V3.5.4-A3.4 — PRODUCT CATALOG CREATE FIX
-
-- Corrige el modo edición del Catálogo Maestro de productos.
-- Un alta nueva siempre genera un UUID nuevo y ya no reutiliza el ID del producto previamente editado.
-- Elegir una plantilla/preset inicia explícitamente un registro nuevo.
-- Nuevo/limpiar formulario borra explícitamente el ID oculto de edición.
-- Conserva V3.5.4-A3.3 (edición de vencimiento), PWA y motor de sincronización sin cambios.
