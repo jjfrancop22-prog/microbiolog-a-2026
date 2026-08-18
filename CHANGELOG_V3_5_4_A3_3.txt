@@ -1,9 +1,0 @@
-MICROBIOLOGÍA ERP V3.5.4-A3.3 — Expiry Correction
-
-- Agrega “Editar vencimiento” en Trazabilidad de productos > Inventario / Apertura.
-- Solicita nueva fecha, motivo obligatorio y confirmación.
-- Mantiene el lote, stock, apertura, usos y demás datos intactos.
-- Recalcula automáticamente el vencimiento efectivo y el estado APTO/VENCIDO.
-- Sincroniza la fecha corregida con el frasco/lote integrado de medios y, cuando aplica, con la cepa de referencia vinculada.
-- Registra trazabilidad: fecha anterior, fecha nueva, usuario, fecha/hora y motivo.
-- No modifica el motor Local-First/Firebase ni la capa PWA.
