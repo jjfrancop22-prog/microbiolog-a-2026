@@ -1,0 +1,8 @@
+MICROBIOLOGÍA ERP V3.5.4-A3.7 — CEPA MAESTRA ÚNICA / LOTES EN TRAZABILIDAD
+
+- Una sola cepa maestra por microorganismo + referencia ATCC.
+- Se elimina del catálogo por defecto el duplicado Escherichia coli-1 (ATCC 25922).
+- Si existen duplicados históricos con la misma referencia ATCC, se consolidan visualmente en la cepa maestra canónica y los vínculos de Trazabilidad se redirigen a ella.
+- El formulario de Catálogo de cepas bloquea crear una segunda cepa con la misma referencia ATCC y orienta a registrar el nuevo lote en Trazabilidad de productos → Recepción de lote.
+- Los nuevos lotes comerciales actualizan lote proveedor y caducidad de la cepa maestra vinculada mediante la integración existente.
+- No se modifica el motor de sincronización, PWA ni Clean Start.
