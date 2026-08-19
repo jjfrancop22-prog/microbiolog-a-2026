@@ -1,0 +1,12 @@
+MICROBIOLOGÍA ERP V3.5.4-A3.12
+
+Corrección puntual: calendario laboral del Plan Maestro de Control Microbiológico.
+
+- Conserva el cálculo desde la fecha real del último control.
+- Suma la frecuencia configurada (7, 15 o 30 días).
+- Si la fecha calculada cae sábado o domingo, avanza al siguiente día laborable.
+- Si coincide con un feriado configurado en el ERP, continúa avanzando hasta el siguiente día laborable.
+- No modifica fechas históricas reales.
+- No modifica Q1/Q2/Q3, Firebase, sincronización ni la arquitectura PWA.
+
+Nota de calendario: 16/01/2026 corresponde a viernes, por lo que esa fecha concreta se conserva como laborable salvo que esté registrada como feriado.

@@ -1,4 +1,4 @@
-const VERSION='V3.5.4-A3.11';
+const VERSION='V3.5.4-A3.12';
 const SCHEMA_VERSION=1;
 const WORKSPACE_ID='lab-psi';
 let CLOUD_SYNC_ENABLED=localStorage.getItem('microbio_cloud_enabled')==='true'; // sesión unificada puede activarla automáticamente tras login válido
@@ -644,7 +644,7 @@ function today(){return new Date().toISOString().slice(0,10)}
 function nowISO(){return new Date().toISOString()}
 function addDays(dateStr,days){if(!dateStr)return '';const d=new Date(dateStr+'T12:00:00');d.setDate(d.getDate()+Number(days||0));return d.toISOString().slice(0,10)}
 // V2.0.0-I1: Smart Planificador. Control directo, precarga, EN PROCESO, recálculo y actualización inmediata.
-function adjustToNextWorkingDay(dateStr){if(!dateStr)return '';const d=new Date(dateStr+'T12:00:00');const day=d.getDay();if(day===6)d.setDate(d.getDate()+2);else if(day===0)d.setDate(d.getDate()+1);return d.toISOString().slice(0,10)}
+function adjustToNextWorkingDay(dateStr){if(!dateStr)return '';let out=String(dateStr).slice(0,10);for(let i=0;i<14;i++){const d=new Date(out+'T12:00:00');const day=d.getDay();const holiday=(state.environmentHolidays||[]).some(h=>h&&h.date===out);if(day!==0&&day!==6&&!holiday)return out;d.setDate(d.getDate()+1);out=d.toISOString().slice(0,10)}return out}
 function addScheduledDays(dateStr,days){return adjustToNextWorkingDay(addDays(dateStr,days))}
 function daysBetween(a,b){if(!a||!b)return null;return Math.ceil((new Date(b+'T12:00:00')-new Date(a+'T12:00:00'))/86400000)}
 function pill(v){const s=String(v||'—');const cls=/NO APTO|NO_CUMPLE|BLOQUEADO|VENCIDO|DESECHADO/.test(s)?'bad':/APTO|LIBERADO|CUMPLE|DISPONIBLE|CALIFICADO|VIGENTE/.test(s)?'ok':'warn';return `<span class="pill ${cls}">${esc(s)}</span>`}
