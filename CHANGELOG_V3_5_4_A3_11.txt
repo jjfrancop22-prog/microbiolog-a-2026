@@ -1,0 +1,9 @@
+MICROBIOLOGÍA ERP V3.5.4-A3.11 — Q3 SECUENCIA POR CONTROL REALIZADO
+
+- Q3 usa una sola secuencia de próxima fecha.
+- Registrar solamente A-1 Medium completa el Q3 de esa fecha y recalcula la siguiente fecha permitida.
+- Registrar solamente Fluorocult LMX también completa el Q3 de esa fecha.
+- Registrar ambos medios completa el Q3 y recalcula una sola vez la siguiente fecha.
+- El medio no seleccionado queda como NO CONTROLADO y no mantiene vencida la fecha de Q3.
+- Q1 y Q2 conservan su seguimiento independiente por medio.
+- Sin cambios en Firebase, PWA, Clean Start ni reglas de frecuencia.

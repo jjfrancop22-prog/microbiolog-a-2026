@@ -1,4 +1,4 @@
-const CACHE_NAME='microbiologia-erp-static-v354a310';
+const CACHE_NAME='microbiologia-erp-static-v354a311';
 const STATIC_ASSETS=['/manifest.webmanifest','/icons/micro-192.png','/icons/micro-512.png'];
 self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE_NAME).then(cache=>cache.addAll(STATIC_ASSETS)).catch(()=>{}));});
 self.addEventListener('activate',event=>{event.waitUntil((async()=>{const keys=await caches.keys();await Promise.all(keys.filter(k=>k.startsWith('microbiologia-erp-')&&k!==CACHE_NAME).map(k=>caches.delete(k)));await self.clients.claim();})());});
