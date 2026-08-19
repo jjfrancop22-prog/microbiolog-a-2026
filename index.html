@@ -515,7 +515,7 @@
           <label>Fecha real del control<input name="actualDate" type="date" required></label>
           <div id="qcQ3MediumSelector" class="wide qc-history-entry-tools" hidden>
             <div>
-              <b>Medio(s) a controlar en Q3</b>
+              <b id="qcMediumSelectorTitle">Medio(s) a controlar</b>
               <div class="sample-parameter-checks">
                 <label><input type="checkbox" name="q3MediumA1" checked> A-1 Medium</label>
                 <label><input type="checkbox" name="q3MediumLMX" checked> Fluorocult LMX</label>
@@ -525,8 +525,8 @@
           </div>
           <label id="qcA1PrepWrap">A-1 Medium vigente<select name="a1PrepId" required></select></label>
           <label id="qcLMXPrepWrap">Fluorocult LMX vigente<select name="lmxPrepId" required></select></label>
-          <label>Reactivación semanal A-1<select name="reactivationId"></select></label>
-          <label>Reactivación semanal LMX<select name="reactivationIdTotal"></select><small class="hint">En fase positiva puede compartir la misma reactivación de E. coli. En fase negativa usa la cepa configurada para LMX.</small></label>
+          <label id="qcReactA1Wrap">Reactivación semanal A-1<select name="reactivationId"></select></label>
+          <label id="qcReactLMXWrap">Reactivación semanal LMX<select name="reactivationIdTotal"></select><small class="hint">En fase positiva puede compartir la misma reactivación de E. coli. En fase negativa usa la cepa configurada para LMX.</small></label>
           <label>Hora inicio 35 °C<input name="start35" type="time" required></label>
           <label>Temperatura etapa 35 °C<select name="temp35" required><option value="34.5">34.5 °C</option><option value="34.6">34.6 °C</option><option value="34.7">34.7 °C</option><option value="34.8">34.8 °C</option><option value="34.9">34.9 °C</option><option value="35.0" selected>35.0 °C</option><option value="35.1">35.1 °C</option><option value="35.2">35.2 °C</option><option value="35.3">35.3 °C</option><option value="35.4">35.4 °C</option><option value="35.5">35.5 °C</option></select><small class="hint">Rango permitido 34,5–35,5 °C · valor inicial 35,0 °C</small></label>
           <label>Hora fin 35 °C<input name="end35" type="time" required></label>
@@ -540,7 +540,7 @@
               <label>Tipo / matriz fortificada<select name="matrix"><option value="Agua destilada">Agua destilada · AD</option></select><small class="hint">Una sola muestra fortificada; cada medio conserva su propio patrón de tubos y NMP.</small></label>
               <label>Código de muestra<input name="sampleCode" value="AD-1" readonly><small class="hint">Automático · consecutivo independiente por tipo · reinicia cada año.</small></label>
             </div>
-            <div class="qc-medium-result-card qc-a1-card wide">
+            <div id="qcQ2A1Card" class="qc-medium-result-card qc-a1-card wide">
               <div class="qc-medium-result-head"><div><b>A‑1 Medium · Coliformes fecales</b><span id="qcA1PhaseBadge">Resultado independiente</span></div><strong id="qcA1Pattern">— · — · —</strong></div>
               <div class="qc-medium-result-grid">
                 <label>Tubos + 10 mL<select name="pos10"><option value="">Seleccione</option><option>0</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></label>
@@ -551,7 +551,7 @@
                 <label>Crecimiento / turbidez<select name="growth" required><option value="">Seleccione</option><option value="SI">SI</option><option value="NO">NO</option></select></label>
               </div>
             </div>
-            <div class="qc-medium-result-card qc-lmx-card wide">
+            <div id="qcQ2LMXCard" class="qc-medium-result-card qc-lmx-card wide">
               <div class="qc-medium-result-head"><div><b>Fluorocult LMX · Coliformes totales</b><span id="qcLmxPhaseBadge">Resultado independiente</span></div><strong id="qcLmxPattern">— · — · —</strong></div>
               <div class="qc-medium-result-grid">
                 <label>Tubos + 10 mL<select name="lmxPos10"><option value="">Seleccione</option><option>0</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></label>

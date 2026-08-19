@@ -1,0 +1,10 @@
+MICROBIOLOGÍA ERP V3.5.4-A3.8 — SELECCIÓN DE MEDIO EN Q1/Q2/Q3
+
+- Q1, Q2 y Q3 muestran el selector de medios A-1 Medium / Fluorocult LMX.
+- Por defecto se seleccionan los medios que están listos y vencidos/corresponden para la fecha; si ambos aplican, quedan ambos seleccionados.
+- El analista puede registrar solo A-1 o solo LMX cuando eso refleje lo realmente controlado.
+- El sistema exige lote vigente, reactivación, observaciones y tubos/NMP únicamente para los medios seleccionados.
+- En Q2 se ocultan y deshabilitan los bloques del medio no seleccionado.
+- La próxima fecha Q1/Q2/Q3 se mantiene por medio, evitando dar por cumplido el medio que no se controló.
+- El encabezado ahora muestra dinámicamente Q1, Q2 o Q3.
+- No se modifica la sincronización Firebase, PWA, Clean Start ni las frecuencias configuradas.
