@@ -1,0 +1,9 @@
+MICROBIOLOGÍA ERP V3.5.4-A3.10 — CIERRE DE LOTES CONSISTENTE
+
+Corrección puntual:
+- El selector “Cierre del lote” usa ahora la misma fuente real de liberación que el Inventario operativo.
+- Muestra todos los lotes con liberación LIBERADO/BLOQUEADO que todavía no estén cerrados, aunque registros históricos tengan un status local desactualizado.
+- Cada opción identifica lote preparado + medio + frasco comercial para evitar confusiones entre A-1 simple y A-1 concentrado.
+- A-1 simple y A-1 concentrado siguen siendo preparaciones/lotes independientes y se cierran individualmente.
+- El cierre valida la última decisión de Liberación, no un status histórico potencialmente desfasado.
+- Sin cambios en Firebase, PWA controlled update, frecuencias, QC ni reglas de preparación.
