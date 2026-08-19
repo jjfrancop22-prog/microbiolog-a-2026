@@ -1,0 +1,11 @@
+MICROBIOLOGÍA ERP V3.5.4-A3.13
+
+Q1/Q2/Q3 · SECUENCIA OPERATIVA UNIFICADA POR TIPO DE CONTROL
+
+- Q1, Q2 y Q3 avanzan su próxima fecha cuando se guarda al menos un medio seleccionado y completado.
+- Registrar solo A-1 Medium completa el control de esa fecha y recalcula la siguiente fecha.
+- Registrar solo Fluorocult LMX hace lo mismo.
+- Registrar A-1 + LMX completa ambos en un mismo control y la secuencia avanza una sola vez.
+- El medio no seleccionado queda registrado como NO CONTROLADO y no mantiene vencida la fecha del control.
+- Se conservan las frecuencias, fases y restricciones de días propias de Q1, Q2 y Q3.
+- No se modifica Firebase, sincronización, PWA, Clean Start ni otros módulos.

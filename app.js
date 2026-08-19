@@ -1,4 +1,4 @@
-const VERSION='V3.5.4-A3.12';
+const VERSION='V3.5.4-A3.13';
 const SCHEMA_VERSION=1;
 const WORKSPACE_ID='lab-psi';
 let CLOUD_SYNC_ENABLED=localStorage.getItem('microbio_cloud_enabled')==='true'; // sesión unificada puede activarla automáticamente tras login válido
@@ -1506,10 +1506,11 @@ function qcGenerateNextFromAnchor(type,ref=today()){
 function qcRecordIncludes(x,medium){const selected=Array.isArray(x?.selectedMedia)?x.selectedMedia:null;if(!selected||!selected.length)return true;return selected.includes(medium)}
 function qcControlsOf(type,medium=''){return (state.coliformQCControls||[]).filter(x=>x.type===type&&(!medium||qcRecordIncludes(x,medium))).sort((a,b)=>(b.actualDate||'').localeCompare(a.actualDate||''))}
 function qcNextDueFor(type,medium){
-  // V3.5.4-A3.11: Q3 tiene una sola secuencia operativa.
-  // Registrar A-1, LMX o ambos completa el Q3 de esa fecha y mueve la próxima fecha.
-  // El medio no seleccionado se interpreta como NO CONTROLADO ese día, no como Q3 pendiente.
-  const last=type==='Q3'?qcControlsOf(type)[0]:qcControlsOf(type,medium)[0];
+  // V3.5.4-A3.13: Q1, Q2 y Q3 usan una sola secuencia operativa por tipo de control.
+  // Registrar A-1, LMX o ambos completa el control de esa fecha y mueve la próxima fecha.
+  // El medio no seleccionado queda como NO CONTROLADO ese día y NO congela la programación.
+  // El parámetro medium se conserva por compatibilidad con el planificador, pero la fecha es unificada.
+  const last=qcControlsOf(type)[0];
   return last?qcNextFromActual(type,last.actualDate):qcGenerateNextFromAnchor(type,today())
 }
 function qcNextDue(type){return [qcNextDueFor(type,'A1'),qcNextDueFor(type,'LMX')].sort()[0]}
