@@ -1,0 +1,7 @@
+MICROBIOLOGÍA ERP V3.5.4-A3.9 — PWA CONTROLLED UPDATE
+
+- Añade version.json de producción con caché deshabilitada.
+- La PWA comprueba la versión publicada al abrir, al volver al foco y cada 60 segundos.
+- Si existe una versión nueva, muestra “Nueva versión disponible — Actualizar ahora”.
+- “Actualizar ahora” solicita actualización del Service Worker y recarga la app sin borrar IndexedDB ni datos Firebase.
+- Se mantiene intacta la lógica de negocio, sincronización Firebase y selecciones Q1/Q2/Q3 de A3.8.

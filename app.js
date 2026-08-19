@@ -1,4 +1,4 @@
-const VERSION='V3.5.4-A3.8';
+const VERSION='V3.5.4-A3.9';
 const SCHEMA_VERSION=1;
 const WORKSPACE_ID='lab-psi';
 let CLOUD_SYNC_ENABLED=localStorage.getItem('microbio_cloud_enabled')==='true'; // sesión unificada puede activarla automáticamente tras login válido

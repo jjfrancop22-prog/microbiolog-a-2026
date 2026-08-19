@@ -1,11 +1,11 @@
-const CACHE_NAME='microbiologia-erp-static-v354a35-pwa1';
+const CACHE_NAME='microbiologia-erp-static-v354a39';
 const STATIC_ASSETS=['/manifest.webmanifest','/icons/micro-192.png','/icons/micro-512.png'];
 self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE_NAME).then(cache=>cache.addAll(STATIC_ASSETS)).catch(()=>{}));});
 self.addEventListener('activate',event=>{event.waitUntil((async()=>{const keys=await caches.keys();await Promise.all(keys.filter(k=>k.startsWith('microbiologia-erp-')&&k!==CACHE_NAME).map(k=>caches.delete(k)));await self.clients.claim();})());});
 self.addEventListener('fetch',event=>{
   if(event.request.method!=='GET')return;
   const url=new URL(event.request.url);if(url.origin!==self.location.origin)return;
-  if(event.request.mode==='navigate'||url.pathname==='/'||url.pathname.endsWith('/index.html')||url.pathname.endsWith('.js')||url.pathname.endsWith('.css')){event.respondWith(fetch(event.request,{cache:'no-store'}));return;}
+  if(event.request.mode==='navigate'||url.pathname==='/'||url.pathname.endsWith('/index.html')||url.pathname.endsWith('.js')||url.pathname.endsWith('.css')||url.pathname==='/version.json'){event.respondWith(fetch(event.request,{cache:'no-store'}));return;}
   if(url.pathname==='/manifest.webmanifest'||url.pathname.startsWith('/icons/')){event.respondWith(caches.match(event.request).then(hit=>hit||fetch(event.request).then(response=>{const copy=response.clone();caches.open(CACHE_NAME).then(c=>c.put(event.request,copy)).catch(()=>{});return response})));return;}
   event.respondWith(fetch(event.request));
 });
